@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RéunioFlux — Administrateur</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Design System OSEP -->
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+
+    <!-- Leaflet JS pour la Carte Interactive (Formulaire de création) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+
+    <style>
+        /* --- DESIGN PREMIUM OSEP : EMERALD / DEEP SEA --- */
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+
+        .btn-dark {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-dark:hover {
+            transform: scale(1.02);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+
+        .card-emerald {
+            background: linear-gradient(135deg, #10b981 0%, #064e3b 100%) !important;
+            color: white !important;
+        }
+
+        .card-emerald .kpi-num,
+        .card-emerald p {
+            color: white !important;
+        }
+
+        .icon-circle {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+        }
+
+        .card-emerald .icon-circle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        /* FullCalendar Customization */
+        .fc-theme-standard td,
+        .fc-theme-standard th {
+            border: 1px solid rgba(0, 0, 0, 0.05) !important;
+        }
+
+        .fc-daygrid-day:hover {
+            background: rgba(16, 185, 129, 0.05) !important;
+        }
+
+        .fc-button-primary {
+            background: var(--primary) !important;
+            border: none !important;
+            border-radius: 8px !important;
+        }
+
+        .fc-toolbar-title {
+            font-size: 1.1rem !important;
+            font-weight: 700 !important;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .calendar-card {
+            min-height: 550px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <!-- Modale QR (Utilise dashboard-logic.js) -->
+            <div id="qrModal"
+                style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:flex-start; overflow-y:auto; padding: 20px 0;">
+                <div
+                    style="background:white; padding:30px; border-radius:20px; width:450px; text-align:center; box-shadow: 0 10px 40px rgba(0,0,0,0.2); margin: auto;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="margin:0;">Code QR & Lien</h3>
+                        <button onclick="closeQRModal()"
+                            style="background:none; border:none; font-size:1.2rem; cursor:pointer; color:#666;">&times;</button>
+                    </div>
+                    <h4 id="qrModalTitle" style="color:var(--primary); margin-bottom:10px;">Réunion</h4>
+                    <div
+                        style="background:#f9fafb; padding:15px; border-radius:15px; display:inline-block; margin-bottom:10px; position:relative;">
+                        <img id="qrModalImage" src="" alt="QR Code" style="width:200px; height:200px; display:block;">
+                        <div id="qrCountdownContainer"
+                            style="margin-top: 10px; display: flex; flex-direction: column; align-items: center;">
+                            <div
+                                style="width: 100%; height: 4px; background: #e5e7eb; border-radius: 2px; overflow: hidden;">
+                                <div id="qrCountdownBar"
+                                    style="width: 100%; height: 100%; background: var(--primary); transition: width 1s linear;">
+                                </div>
+                            </div>
+                            <span id="qrCountdownText" style="font-size: 0.75rem; color: #666; margin-top: 5px;">Mise à
+                                jour dans 30s</span>
+                        </div>
+                    </div>
+                    <!-- Challenge Code -->
+                    <div
+                        style="margin-bottom:20px; padding: 10px; background: #fff7ed; border: 1px dashed #fdba74; border-radius: 10px;">
+                        <p style="font-size:0.75rem; color:#9a3412; margin-bottom:5px; font-weight: 600;">CODE DE
+                            PRÉSENCE (SI GPS BLOQUÉ) :</p>
+                        <div id="qrChallengeCode"
+                            style="font-size: 2rem; font-weight: 800; color: #ea580c; letter-spacing: 5px;">---</div>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <p style="font-size:0.8rem; color:#666; margin-bottom:5px;">Lien de participation :</p>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="qrModalLink" readonly
+                                style="flex:1; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:0.85rem; color:#555;">
+                            <button onclick="copyLink('qrModalLink')" class="btn-dark"
+                                style="padding:8px 15px; font-size:0.85rem;"><i class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <p style="font-size:0.8rem; color:#666; margin-bottom:5px;">Lien de Projection (Lobby) :</p>
+                        <div style="display:flex; gap:10px;">
+                            <input type="text" id="qrModalLobbyLink" readonly
+                                style="flex:1; padding:8px; border:1px solid #ddd; border-radius:8px; font-size:0.85rem; color:var(--accent);">
+                            <button onclick="copyLink('qrModalLobbyLink')" class="btn-dark"
+                                style="padding:8px 15px; font-size:0.85rem; background: var(--accent);"><i
+                                    class="fa-regular fa-copy"></i></button>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:center; gap:10px;">
+                        <a id="qrModalDownload" download="qrcode.png" class="btn-light"
+                            style="text-decoration:none; padding:8px 20px; font-size:0.9rem;">
+                            <i class="fa-solid fa-download"></i> Télécharger
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <header class="top-bar">
+                <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div style="text-align: right;">
+                            <h4 style="font-size: 0.9rem;" id="userFullName">Administrateur</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Gestion des réunions</p>
+                        </div>
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=AD&background=10b981&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Tableau de Bord Admin</h1>
+                    <p>Bienvenue sur votre espace de pilotage.</p>
+                </div>
+                <div class="header-btns">
+                    <button class="btn-dark" onclick="toggleCreateForm()" id="btnToggleCreate">
+                        <i class="fa-solid fa-plus"></i> Nouvelle Réunion
+                    </button>
+                </div>
+            </div>
+
+            <!-- Message Intelligent -->
+            <div id="intelligentMessageContainer"
+                style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--primary); padding: 15px 20px; border-radius: 8px; margin-bottom: 25px; line-height: 1.5;">
+                <p id="intelligentMessageText" style="margin:0; color: var(--text-main);">Chargement du message...</p>
+            </div>
+
+            <!-- Grille de KPIs -->
+            <div class="osep-grid">
+                <!-- Réunion en Cours (Premium Highlight) -->
+                <div class="osep-card card-emerald">
+                    <div class="icon-circle"><i class="fa-solid fa-calendar-days"></i></div>
+                    <p>Réunions Gérées</p>
+                    <div class="kpi-num" id="statTotalMeetings">0</div>
+                </div>
+                <div class="osep-card">
+                    <div class="icon-circle"><i class="fa-solid fa-users"></i></div>
+                    <p>Total Participants</p>
+                    <div class="kpi-num" id="statAttendees">0</div>
+                </div>
+                <div class="osep-card">
+                    <div class="icon-circle"><i class="fa-solid fa-clock"></i></div>
+                    <p>En cours</p>
+                    <div class="kpi-num" id="statActiveMeetings">0</div>
+                </div>
+
+                <!-- Chart Intra/Inter -->
+                <div class="osep-card"
+                    style="grid-column: span 1; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <h4 style="margin-bottom:15px; font-size:0.9rem; text-align:center;">Types de Réunions</h4>
+                    <div style="width: 120px; height: 120px;">
+                        <canvas id="meetingTypesChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart Modifications -->
+                <div class="osep-card"
+                    style="grid-column: span 1; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                    <h4 style="margin-bottom:15px; font-size:0.9rem; text-align:center;">Activité des Modifications</h4>
+                    <div style="width: 100%; height: 120px;">
+                        <canvas id="modificationsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORMULAIRE DE CRÉATION AVANCÉ (Caché par défaut) -->
+            <section class="form-section card" id="createMeetingSection" style="margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3><i class="fa-solid fa-calendar-plus"></i> Planifier une Réunion</h3>
+                    <button onclick="toggleCreateForm()"
+                        style="background:none; border:none; cursor:pointer; color:#666;"><i
+                            class="fa-solid fa-times"></i></button>
+                </div>
+                <form id="createMeetingForm" onsubmit="handleCreation(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div style="grid-column: span 2;">
+                            <label>Sujet de la réunion</label>
+                            <input type="text" name="subject" placeholder="Ex: Revue Budgétaire Q1" required
+                                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;">
+                        </div>
+                        <div>
+                            <label>Date</label>
+                            <input type="date" name="date" required
+                                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;">
+                        </div>
+                        <div>
+                            <label>Heure de début</label>
+                            <input type="time" name="time" required
+                                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;">
+                        </div>
+                        <div>
+                            <label>Heure de fin</label>
+                            <input type="time" name="end_time" required
+                                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;">
+                        </div>
+                        <div>
+                            <label>Lieu / Salle</label>
+                            <select name="location"
+                                style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;">
+                                <option>Salle de Conférence</option>
+                                <option>Bureau Direction</option>
+                                <option>Extérieur</option>
+                                <option>Visio</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- GÉOREPÉRAGE -->
+                    <div
+                        style="margin-top: 20px; background: #f9fafb; padding: 20px; border-radius: 15px; border: 1px solid #eee;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px;">
+                            <input type="checkbox" id="enableGeoCustom" onchange="toggleGeoMap()">
+                            <label for="enableGeoCustom"
+                                style="margin:0; font-weight:600; color:var(--primary);">Activer la zone de géorepérage
+                                SIEM</label>
+                        </div>
+
+                        <div id="mapSection" style="display:none;">
+                            <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">Déplacez le marqueur
+                                pour définir la zone autorisée.</p>
+                            <div id="pickerMap"
+                                style="height: 300px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 15px;">
+                            </div>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                                <input type="hidden" name="geo_lat" id="geo_lat" value="5.380328">
+                                <input type="hidden" name="geo_lon" id="geo_lon" value="-3.986982">
+                                <div>
+                                    <label style="font-size:0.75rem;">Rayon (mètres)</label>
+                                    <input type="number" name="geo_radius" id="geo_radius" value="1000"
+                                        oninput="updateRadiusFromInput()"
+                                        style="width:100%; padding:8px; border:1px solid #ddd; border-radius:5px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <label>Description / Ordre du jour</label>
+                        <textarea name="description" rows="3" placeholder="Points clés..."
+                            style="width:100%; padding:12px; border:1px solid #ddd; border-radius:10px;"></textarea>
+                    </div>
+
+                    <div style="display:flex; justify-content: flex-end; gap:10px; margin-top: 20px;">
+                        <button type="button" class="btn-light" onclick="toggleCreateForm()">Annuler</button>
+                        <button type="submit" class="btn-dark" style="background-color: var(--primary);">Créer la
+                            réunion</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- GRILLE PRINCIPALE (CALENDRIER ET PARTICIPANTS) -->
+            <!-- Zone de contenu principale -->
+            <div class="osep-grid">
+                <!-- Calendrier -->
+                <div class="osep-card calendar-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3><i class="fa-regular fa-calendar"></i> Calendrier des Réunions</h3>
+                        <div style="display:flex; gap:5px;">
+                            <span
+                                style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#3b82f6;"></span>
+                            <span style="font-size:0.7rem; color:#666;">Mes réunions</span>
+                        </div>
+                    </div>
+                    <div id='calendar'></div>
+                </div>
+
+                <!-- DERNIERS PARTICIPANTS ET ACTIONS -->
+                <div style="display:flex; flex-direction:column; gap:20px;">
+
+                    <div class="card" style="flex:1;">
+                        <div
+                            style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                            <h3>Dernière Participation</h3>
+                            <a href="/participation" class="badge badge-gray" style="text-decoration:none;">Voir
+                                tout</a>
+                        </div>
+                        <ul class="item-list" id="attendeesList">
+                            <li style="text-align:center; padding:20px; color:#999; font-style:italic;">Chargement...
+                            </li>
+                        </ul>
+
+                        <div style="margin-top:20px; padding-top:15px; border-top:1px solid #eee;">
+                            <button onclick="window.location.href='/participation'" class="btn-light"
+                                style="width:100%; margin-bottom:10px;">
+                                <i class="fa-solid fa-file-invoice"></i> Feuilles d'émargement
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Réunion Active</h3>
+                        <div id="activeMeetingMini" style="padding:15px; text-align:center;">
+                            <span class="badge badge-gray" id="cmStatus"
+                                style="background:#dcfce7; color:#166534; display:none; margin-bottom:10px;">En
+                                direct</span>
+                            <h2 style="margin: 5px 0; font-size: 1.2rem; color: var(--primary-dark);" id="cmTitle">
+                                Aucune réunion active</h2>
+                            <p style="color: #6b7280; font-size: 0.85rem; font-weight: 500;" id="cmTime">-</p>
+                            <div style="font-size:0.75rem; margin-top:15px; padding-top:10px; border-top: 1px solid #f3f4f6; color:#4b5563;"
+                                id="cmInfo"></div>
+                        </div>
+                    </div>
+                </div>
+
+                </section>
+        </main>
+
+        <!-- SCRIPTS -->
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js"></script>
+        <script src="/public/js/dashboard-logic.js"></script>
+
+        <script>
+            // --- INITIALISATION DU CALENDRIER ---
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Initialiser les filtres de date (Année en cours par défaut)
+                const now = new Date();
+                const yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+                const yearEnd = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+
+                const inputStart = document.getElementById('filterStartDate');
+                const inputEnd = document.getElementById('filterEndDate');
+
+                if (inputStart) inputStart.value = yearStart;
+                if (inputEnd) inputEnd.value = yearEnd;
+
+                // Listeners pour les filtres
+                [inputStart, inputEnd].forEach(el => {
+                    if (el) el.addEventListener('change', () => {
+                        fetchAdminStats();
+                        initMeetingTypesChart();
+                        initModificationsChart();
+                    });
+                });
+
+                initCalendar();
+                fetchAdminStats();
+                fetchRecentAttendees();
+                loadUserProfile();
+                initPickerMap();
+                fetchIntelligentMessage();
+                initMeetingTypesChart();
+                initModificationsChart();
+            });
+
+            async function fetchIntelligentMessage() {
+                try {
+                    const res = await fetch('/api/stats/intelligent-message');
+                    if (res.ok) {
+                        const data = await res.json();
+                        document.getElementById('intelligentMessageText').innerHTML = data.message;
+                    } else {
+                        document.getElementById('intelligentMessageContainer').style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('intelligentMessageContainer').style.display = 'none';
+                }
+            }
+
+            async function initMeetingTypesChart() {
+                try {
+                    const res = await fetch('/api/stats/meeting-types');
+                    if (res.ok) {
+                        const stats = await res.json();
+                        const ctx = document.getElementById('meetingTypesChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: stats.labels,
+                                datasets: [{
+                                    data: stats.data,
+                                    backgroundColor: ['#10b981', '#3b82f6'],
+                                    borderWidth: 0
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                cutout: '70%',
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function (context) {
+                                                let label = context.label || '';
+                                                if (label) { label += ': '; }
+                                                if (context.parsed !== null) { label += context.parsed; }
+                                                return label;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (e) { console.error("Erreur de récupération des types de réunions", e); }
+            }
+
+            async function initModificationsChart() {
+                try {
+                    const res = await fetch('/api/stats/modifications');
+                    if (res.ok) {
+                        const stats = await res.json();
+                        const ctx = document.getElementById('modificationsChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: stats.labels,
+                                datasets: [{
+                                    label: 'Modifications',
+                                    data: stats.data,
+                                    borderColor: '#eab308',
+                                    backgroundColor: 'rgba(234, 179, 8, 0.2)',
+                                    tension: 0.4,
+                                    fill: true,
+                                    borderWidth: 2,
+                                    pointRadius: 3
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { font: { size: 10 } }
+                                    },
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: { stepSize: 1, font: { size: 10 } }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (e) { console.error("Erreur graphique modifications", e); }
+            }
+
+            async function loadUserProfile() {
+                try {
+                    const res = await fetch('/api/user/me');
+                    if (res.ok) {
+                        const user = await res.json();
+                        document.getElementById('userFullName').textContent = user.fullname || user.username;
+                        const initials = (user.fullname || user.username).substring(0, 2).toUpperCase();
+                        document.getElementById('userAvatar').src = `https://ui-avatars.com/api/?name=${initials}&background=10b981&color=fff`;
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function initCalendar() {
+                const calendarEl = document.getElementById('calendar');
+                if (!calendarEl) return;
+
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'fr',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek'
+                    },
+                    events: '/api/meetings',
+                    eventClick: function (info) {
+                        const m = info.event.extendedProps;
+                        // Utiliser la fonction showQR de dashboard-logic.js
+                        showQR(m.uuid, `${window.location.origin}/meeting/${m.uuid}`, info.event.title);
+                    },
+                    themeSystem: 'standard'
+                });
+                calendar.render();
+            }
+
+            async function fetchAdminStats() {
+                try {
+                    const start = document.getElementById('filterStartDate')?.value;
+                    const end = document.getElementById('filterEndDate')?.value;
+                    const url = `/api/stats/overview?startDate=${start}&endDate=${end}`;
+
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const stats = await res.json();
+                        document.getElementById('statTotalMeetings').textContent = stats.totalMeetings || 0;
+                        document.getElementById('statAttendees').textContent = stats.totalAttendees || 0;
+                        document.getElementById('statActiveMeetings').textContent = stats.activeMeetings || 0;
+                        document.getElementById('statAttendanceRate').textContent = stats.totalSupervisors || 0;
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            async function fetchRecentAttendees() {
+                const list = document.getElementById('attendeesList');
+                try {
+                    const res = await fetch('/api/participants');
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.length === 0) {
+                            list.innerHTML = '<li style="text-align:center; padding:20px; color:#999; font-style:italic;">Aucun participant.</li>';
+                            return;
+                        }
+                        list.innerHTML = data.slice(0, 5).map(a => `
+                        <li>
+                            <div class="item-icon" style="background:var(--primary-light); color:var(--primary);"><i class="fa-solid fa-user"></i></div>
+                            <div style="flex:1;">
+                                <h4 style="margin:0;">${a.nom} ${a.prenom}</h4>
+                                <p style="font-size:0.75rem; color:#666;">${a.structure} • ${new Date(a.date_inscription).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</p>
+                            </div>
+                            <div style="display:flex; gap:10px;">
+                                <button onclick="toast.info('Génération PDF...')" style="background:none; border:none; color:var(--primary); cursor:pointer;" title="Imprimer"><i class="fa-solid fa-print"></i></button>
+                            </div>
+                        </li>
+                    `).join('');
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+
+
+            // --- GESTION DU FORMULAIRE DE CRÉATION ---
+            function toggleCreateForm() {
+                const section = document.getElementById('createMeetingSection');
+                const btn = document.getElementById('btnToggleCreate');
+                if (section.style.display === 'none' || section.style.display === '') {
+                    section.style.display = 'block';
+                    btn.innerHTML = '<i class="fa-solid fa-times"></i> Fermer';
+                    // Recalculer la taille de la carte si elle était cachée
+                    if (pickerMap) {
+                        setTimeout(() => pickerMap.invalidateSize(), 200);
+                    }
+                } else {
+                    section.style.display = 'none';
+                    btn.innerHTML = '<i class="fa-solid fa-plus"></i> Nouvelle Réunion';
+                }
+            }
+
+            async function handleCreation(e) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+                const payload = {
+                    title: formData.get('subject'),
+                    start_time: new Date(`${formData.get('date')}T${formData.get('time')}:00`).toISOString(),
+                    end_time: new Date(`${formData.get('date')}T${formData.get('end_time')}:00`).toISOString(),
+                    description: formData.get('description'),
+                    location: formData.get('location'),
+                    geo_lat: document.getElementById('enableGeoCustom').checked ? parseFloat(document.getElementById('geo_lat').value) : null,
+                    geo_lon: document.getElementById('enableGeoCustom').checked ? parseFloat(document.getElementById('geo_lon').value) : null,
+                    geo_radius: document.getElementById('enableGeoCustom').checked ? parseInt(document.getElementById('geo_radius').value) : null
+                };
+
+                try {
+                    const res = await fetch('/api/meetings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        toast.success("Réunion créée avec succès !");
+                        toggleCreateForm();
+                        // Rafraîchir le calendrier et les stats
+                        location.reload();
+                    } else {
+                        const err = await res.json();
+                        toast.error("Erreur: " + (err.error || "Impossible de créer la réunion"));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Erreur réseau");
+                }
+            }
+
+            // --- CARTE LEAFLET ---
+            let pickerMap, marker, circle;
+            function initPickerMap() {
+                const defaultLat = 5.380328;
+                const defaultLon = -3.986982;
+                pickerMap = L.map('pickerMap').setView([defaultLat, defaultLon], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(pickerMap);
+                marker = L.marker([defaultLat, defaultLon], { draggable: true }).addTo(pickerMap);
+                circle = L.circle([defaultLat, defaultLon], { radius: 1000, color: '#ea580c' }).addTo(pickerMap);
+
+                marker.on('dragend', function () {
+                    const pos = marker.getLatLng();
+                    document.getElementById('geo_lat').value = pos.lat;
+                    document.getElementById('geo_lon').value = pos.lng;
+                    circle.setLatLng(pos);
+                });
+            }
+
+            function toggleGeoMap() {
+                const section = document.getElementById('mapSection');
+                section.style.display = document.getElementById('enableGeoCustom').checked ? 'block' : 'none';
+                if (pickerMap) setTimeout(() => pickerMap.invalidateSize(), 200);
+            }
+
+            function updateRadiusFromInput() {
+                const r = parseInt(document.getElementById('geo_radius').value);
+                if (circle && r) circle.setRadius(r);
+            }
+        </script>
+</body>
+
+</html>

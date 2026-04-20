@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Staff - Admin OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style-dashboard.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/live-search.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF + AutoTable for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        .finance-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .upload-zone {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: #f8fafc;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px dashed #cbd5e1;
+        }
+
+        .finance-table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+
+        .finance-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .finance-table th,
+        .finance-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .finance-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+        }
+
+        .finance-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .finance-table tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .status-valide {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-attente {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-rejete {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .editable-field {
+            padding: 6px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            width: 100px;
+            transition: all 0.2s;
+        }
+
+        .editable-field:focus {
+            border-color: var(--primary);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.1);
+        }
+
+        .action-btns button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .action-btns .btn-save {
+            color: var(--primary);
+        }
+
+        .action-btns .btn-remove {
+            color: #ef4444;
+        }
+
+        .action-btns button:hover {
+            background: #f1f5f9;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 500px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="searchInput" placeholder="Rechercher dans la liste...">
+                </div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 style="font-size: 0.9rem;" id="userFullName">
+                                <%= user ? (user.full_name || user.username) : 'Finance' %>
+                            </h4>
+                            <p style="font-size: 0.75rem; color: #888;">Staff</p>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=SF&background=059669&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Validation Financière</h1>
+                    <p>Gérez les présences, les montants et le rapprochement des listes (Tableau final).</p>
+                </div>
+            </div>
+
+            <!-- Panneau de contrôle Staff -->
+            <div class="finance-header">
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <select id="meetingSelect" class="editable-field" style="width: 250px; padding: 10px;"
+                        onchange="loadFinanceData()">
+                        <option value="">Sélectionner une réunion...</option>
+                    </select>
+
+                    <select id="roleFilter" class="editable-field" style="width: 180px; padding: 10px;"
+                        onchange="filterTable()">
+                        <option value="ALL">Toutes les fonctions</option>
+                        <!-- Rempli dynamiquement -->
+                    </select>
+
+                    <select id="montantFilter" class="editable-field" style="width: 180px; padding: 10px;"
+                        onchange="filterTable()">
+                        <option value="ALL">Tous les montants</option>
+                        <!-- Rempli dynamiquement -->
+                    </select>
+                </div>
+
+                <div class="upload-zone">
+                    <div style="font-size: 0.9rem; color: #64748b;">
+                        <i class="fa-solid fa-file-excel" style="color: #16a34a; margin-right: 5px;"></i> Raprochement
+                        Auto
+                    </div>
+                    <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display: none;">
+                    <button class="btn-light" onclick="document.getElementById('excelUpload').click()">Choisir
+                        fichier</button>
+                    <button class="btn-dark" onclick="processExcelFile()" id="btnProcessUpload"
+                        disabled>Analyser</button>
+                </div>
+
+                <div>
+                    <button class="btn-dark" onclick="openAddModal()"><i class="fa-solid fa-plus"></i> Ajouter
+                        Participant</button>
+                </div>
+            </div>
+
+            <!-- Tableau des présences -->
+            <div class="finance-table-container">
+                <table class="finance-table" id="financeTable">
+                    <thead>
+                        <tr>
+                            <th>Nom & Prénom</th>
+                            <th>Fonction</th>
+                            <th>Structure / Email</th>
+                            <th>Téléphone</th>
+                            <th style="text-align: center;">Signature</th>
+                            <th onclick="toggleSort('montant')" style="cursor:pointer" title="Trier par montant">
+                                Montant (FCFA) <i class="fa-solid fa-sort"></i>
+                            </th>
+                            <th style="text-align: center;">Statut Staff</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody id="financeTableBody">
+                        <tr>
+                            <td colspan="8" style="text-align: center; color: #64748b; padding: 30px;">Veuillez
+                                sélectionner une réunion pour afficher les données.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-weight: 600; color: #475569;" id="statsFooter">Total Validé : 0 participant(s)</div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn-light" onclick="exportToPDF()"><i class="fa-solid fa-file-pdf"></i> Exporter
+                        PDF</button>
+                    <button class="btn-dark" onclick="exportToExcel()"><i class="fa-solid fa-file-excel"></i> Exporter
+                        Excel</button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Modal d'ajout manuel -->
+        <div class="modal-overlay" id="addModal">
+            <div class="modal-content">
+                <h2 style="margin-bottom:20px;">Ajout Manuel</h2>
+                <form id="addForm" onsubmit="addParticipant(event)">
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Nom</label>
+                            <input type="text" id="aNom" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Prénom</label>
+                            <input type="text" id="aPrenom" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Fonction</label>
+                        <input type="text" id="aFonction" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Structure / Organisation</label>
+                        <input type="text" id="aStructure">
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Email</label>
+                            <input type="email" id="aEmail">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Téléphone</label>
+                            <input type="text" id="aTel">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Montant (FCFA)</label>
+                        <input type="number" id="aMontant" placeholder="Ex: 5000">
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                        <button type="button" onclick="closeAddModal()" class="btn-light">Annuler</button>
+                        <button type="submit" class="btn-dark">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js?v=2"></script>
+        <!-- Script de logique métier Finance -->
+        <script>
+            let currentMeetingId = null;
+            let pData = []; // Données des participants
+            let allMeetingsList = []; // Donneés des réunions
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                await loadMeetingsList();
+
+                // Écouteur pour activer le bouton Analyser après sélection de fichier
+                document.getElementById('excelUpload').addEventListener('change', function () {
+                    const btn = document.getElementById('btnProcessUpload');
+                    if (this.files.length > 0) {
+                        btn.disabled = false;
+                        btn.innerText = `Analyser (${this.files[0].name})`;
+                    } else {
+                        btn.disabled = true;
+                        btn.innerText = "Analyser";
+                    }
+                });
+
+                // Recherche en direct
+                document.getElementById('searchInput').addEventListener('input', filterTable);
+            });
+
+            async function loadMeetingsList() {
+                try {
+                    // On récupère toutes les réunions (ou celles dont l'utilisateur a l'accès)
+                    const res = await fetch('/api/meetings');
+                    if (res.ok) {
+                        const meetings = await res.json();
+                        allMeetingsList = meetings;
+                        const select = document.getElementById('meetingSelect');
+                        meetings.forEach(m => {
+                            const date = new Date(m.start_time).toLocaleDateString('fr-FR');
+                            const indicator = m.financial_impact ? ' [€]' : '';
+                            select.innerHTML += `<option value="${m.id}">${date} - ${m.title}${indicator}</option>`;
+                        });
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Erreur chargement des réunions");
+                }
+            }
+
+            let currentFilteredData = []; // Données actuellement filtrées
+
+            async function loadFinanceData() {
+                currentMeetingId = document.getElementById('meetingSelect').value;
+                if (!currentMeetingId) {
+                    document.getElementById('financeTableBody').innerHTML = '<tr><td colspan="8" style="text-align: center;">Veuillez sélectionner une réunion.</td></tr>';
+                    return;
+                }
+
+                try {
+                    let url = `/api/staff/presences/${currentMeetingId}`;
+                    if (currentSort) url += `?sort=${currentSort}`;
+                    
+                    const res = await fetch(url);
+                    if (res.ok) {
+                        const data = await res.json();
+                        pData = data.donnees;
+                        populateFilters();
+                        filterTable();
+                    } else {
+                        throw new Error("Erreur lors de la récupération");
+                    }
+                } catch (error) {
+                    console.error(error);
+                    toast.error("Impossible de charger les données financières");
+                }
+            }
+
+            function populateFilters() {
+                const roles = new Set();
+                const montants = new Set();
+                
+                pData.forEach(p => { 
+                    if (p.fonction) roles.add(p.fonction); 
+                    if (p.montant != null && p.montant !== '') montants.add(parseFloat(p.montant));
+                });
+
+                const selectRole = document.getElementById('roleFilter');
+                const prevRole = selectRole.value;
+                selectRole.innerHTML = '<option value="ALL">Toutes les fonctions</option>';
+                Array.from(roles).sort().forEach(role => {
+                    selectRole.innerHTML += `<option value="${role}">${role}</option>`;
+                });
+                if (Array.from(roles).includes(prevRole)) selectRole.value = prevRole;
+
+                const selectMontant = document.getElementById('montantFilter');
+                const prevMontant = selectMontant.value;
+                selectMontant.innerHTML = '<option value="ALL">Tous les montants</option>';
+                Array.from(montants).sort((a, b) => a - b).forEach(m => {
+                    selectMontant.innerHTML += `<option value="${m}">${m} FCFA</option>`;
+                });
+                if (Array.from(montants).includes(parseFloat(prevMontant)) || prevMontant === 'ALL') selectMontant.value = prevMontant;
+            }
+
+            function filterTable() {
+                if (!pData || pData.length === 0) return;
+
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const roleTerm = document.getElementById('roleFilter').value;
+                const montantTerm = document.getElementById('montantFilter').value;
+
+                currentFilteredData = pData.filter(p => {
+                    const searchMatch = `${p.nom} ${p.prenom} ${p.email} ${p.structure}`.toLowerCase().includes(searchTerm);
+                    const roleMatch = roleTerm === 'ALL' || p.fonction === roleTerm;
+                    const montantMatch = montantTerm === 'ALL' || (p.montant != null && parseFloat(p.montant) === parseFloat(montantTerm));
+                    
+                    return searchMatch && roleMatch && montantMatch;
+                });
+
+                renderTable(currentFilteredData);
+            }
+
+            function renderTable(data) {
+                const tbody = document.getElementById('financeTableBody');
+                tbody.innerHTML = '';
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">Aucun participant trouvé.</td></tr>';
+                    document.getElementById('statsFooter').innerText = `Total Validé : 0 participant(s)`;
+                    return;
+                }
+
+                let countValide = 0;
+                let totalMontant = 0;
+
+                data.forEach(p => {
+                    if (p.statut_finance === 'Validé') {
+                        countValide++;
+                        if (p.montant) totalMontant += parseFloat(p.montant);
+                    }
+                    
+                    const badgeClass = p.statut_finance === 'Validé' ? 'status-valide' : (p.statut_finance === 'Rejeté' ? 'status-rejete' : 'status-attente');
+
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                    <td><strong>${p.nom || ''} ${p.prenom || ''}</strong></td>
+                    <td>${p.fonction || '-'}</td>
+                    <td><div style="font-size:0.85rem">${p.structure || '-'}</div><div style="font-size:0.75rem; color:#64748b">${p.email || ''}</div></td>
+                    <td>${p.telephone || '-'}</td>
+                    <td style="text-align: center;">${p.signature ? `<img src="${p.signature}" style="height:30px; max-width:80px; border-radius:4px; border:1px solid #eee;">` : ''}</td>
+                    <td>
+                        <input type="number" class="editable-field" value="${p.montant || ''}" placeholder="FCFA" onchange="updateFinanceInfo(${p.id}, this.value, null, null, null, null)">
+                    </td>
+                    <td style="text-align: center;">
+                        <input type="checkbox" style="transform: scale(1.5)" ${p.statut_staff ? 'checked' : ''} onchange="updateFinanceInfo(${p.id}, null, null, this.checked, null, null)">
+                    </td>
+                    <td><span class="status-badge ${badgeClass}" id="badge-${p.id}">${p.statut_finance || 'En attente'}</span></td>
+                `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById('statsFooter').innerHTML = `
+                    <span>Total Validé : <strong>${countValide}</strong> participant(s) sur ${data.length}</span>
+                    <span style="margin-left: 20px; color: #059669;">Somme Totale : <strong>${totalMontant.toLocaleString('fr-FR')} FCFA</strong></span>
+                `;
+            }
+
+            let currentSort = null;
+            async function toggleSort(field) {
+                if (field === 'montant') {
+                    if (currentSort === 'montant_asc') currentSort = 'montant_desc';
+                    else if (currentSort === 'montant_desc') currentSort = null;
+                    else currentSort = 'montant_asc';
+                }
+                loadFinanceData();
+            }
+
+            async function updateFinanceInfo(id, montant, signatureFinale, statutStaff, fonction = null, telephone = null) {
+                try {
+                    const pIndex = pData.findIndex(p => p.id === id);
+                    if (pIndex === -1) return;
+
+                    const currentData = pData[pIndex];
+                    const newMontant = montant !== null ? montant : currentData.montant;
+                    const newSig = signatureFinale !== null ? signatureFinale : currentData.signature_finale;
+                    const newStatutStaff = statutStaff !== null ? statutStaff : currentData.statut_staff;
+
+                    const res = await fetch(`/api/staff/presences/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            montant: montant !== null ? montant : currentData.montant, 
+                            signature_finale: signatureFinale !== null ? signatureFinale : currentData.signature_finale,
+                            statut_staff: statutStaff !== null ? statutStaff : currentData.statut_staff,
+                            fonction: fonction !== null ? fonction : currentData.fonction,
+                            telephone: telephone !== null ? telephone : currentData.telephone
+                        })
+                    });
+
+                    if (res.ok) {
+                        toast.success("Mise à jour effectuée");
+                        const result = await res.json();
+                        const updatedP = result.participant;
+
+                        // Mettre à jour les données locales
+                        pData[pIndex] = updatedP;
+                        const fIndex = currentFilteredData.findIndex(item => item.id === id);
+                        if (fIndex !== -1) currentFilteredData[fIndex] = updatedP;
+
+                        // Mettre à jour le badge de statut si statut_staff a changé
+                        if (statutStaff !== null) {
+                            const badge = document.getElementById(`badge-${id}`);
+                            if (badge) {
+                                badge.innerText = updatedP.statut_finance;
+                                badge.className = `status-badge ${updatedP.statut_finance === 'Validé' ? 'status-valide' : 'status-attente'}`;
+                            }
+                        }
+                    } else {
+                        toast.error("Erreur lors de la sauvegarde.");
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Erreur réseau");
+                }
+            }
+
+            async function updateStatus(id, newStatus) {
+                if (newStatus === 'Rejeté' && !confirm("Voulez-vous vraiment retirer ce participant de la liste valide ?")) return;
+
+                try {
+                    const res = await fetch(`/api/staff/presences/${id}/statut`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ statut_finance: newStatus })
+                    });
+
+                    if (res.ok) {
+                        toast.success(`Statut mis à jour : ${newStatus}`);
+                        // Recharger les données pour que la liste reflète les changements (surtout si les 'Rejeté' disparaissent)
+                        loadFinanceData();
+                    } else {
+                        toast.error("Erreur de modification du statut");
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            // --- RAPPROCHEMENT EXCEL ---
+            async function processExcelFile() {
+                if (!currentMeetingId) return toast.warning("Sélectionnez d'abord une réunion");
+
+                const fileInput = document.getElementById('excelUpload');
+                if (fileInput.files.length === 0) return toast.warning("Veuillez sélectionner un fichier Excel ou CSV.");
+
+                const formData = new FormData();
+                formData.append('fichier', fileInput.files[0]);
+
+                const btn = document.getElementById('btnProcessUpload');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Analyse...';
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(`/api/staff/rapprochement/${currentMeetingId}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const result = await res.json();
+
+                    if (res.ok && result.success) {
+                        toast.success(result.message);
+                        // Réinitialiser l'input file
+                        fileInput.value = '';
+                        btn.innerText = "Analyser";
+                        // Recharger le tableau
+                        loadFinanceData();
+                    } else {
+                        toast.error(result.message || "Erreur d'analyse");
+                        btn.innerText = "Analyser";
+                        btn.disabled = false;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Une erreur serveur est survenue.");
+                    btn.innerText = "Analyser";
+                    btn.disabled = false;
+                }
+            }
+
+            // --- GESTION MODAL AJOUT ---
+            function openAddModal() {
+                if (!currentMeetingId) return toast.warning("Sélectionnez d'abord une réunion");
+                document.getElementById('addForm').reset();
+                document.getElementById('addModal').style.display = 'flex';
+            }
+            function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+            async function addParticipant(e) {
+                e.preventDefault();
+                const payload = {
+                    meeting_id: currentMeetingId,
+                    nom: document.getElementById('aNom').value,
+                    prenom: document.getElementById('aPrenom').value,
+                    fonction: document.getElementById('aFonction').value,
+                    structure: document.getElementById('aStructure').value,
+                    email: document.getElementById('aEmail').value,
+                    telephone: document.getElementById('aTel').value,
+                    montant: document.getElementById('aMontant').value || null
+                };
+
+                try {
+                    const res = await fetch('/api/staff/presences', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        toast.success("Participant ajouté manuellement");
+                        closeAddModal();
+                        loadFinanceData();
+                    } else {
+                        toast.error("Erreur lors de l'ajout");
+                    }
+                } catch (err) { console.error(err); }
+            }
+
+            // --- EXPORT EXCEL (SheetJS) ---
+            function exportToExcel() {
+                if (!currentFilteredData || currentFilteredData.length === 0) return toast.warning("Aucune donnée filtrée à exporter.");
+
+                const meetingSelect = document.getElementById('meetingSelect');
+                const meetingLabel = meetingSelect.options[meetingSelect.selectedIndex]?.text || 'Réunion';
+
+                // FILTRAGE : Uniquement ceux cochés (statut_staff === true)
+                const finalData = currentFilteredData.filter(p => p.statut_staff === true);
+                if (finalData.length === 0) return toast.warning("Aucun participant validé (coché) à exporter dans la liste actuelle.");
+
+                const meetingIdVal = meetingSelect.value;
+                const meetingData = allMeetingsList.find(m => m.id == meetingIdVal);
+
+                // Extraire le titre et la date depuis l'étiquette (format: "05/03/2026 - Titre")
+                let dateStr = "Date non définie";
+                let titleStr = "REUNION";
+                const parts = meetingLabel.split(' - ');
+                if (parts.length > 1) {
+                    dateStr = parts[0];
+                    titleStr = parts.slice(1).join(' - ').replace(/\[€\]/g, '').trim().toUpperCase();
+                } else {
+                    titleStr = meetingLabel.toUpperCase();
+                }
+
+                // Format complet Date + Lieu pour la ligne 7
+                let exactDateLocationStr = `Le ${dateStr} (Lieu à préciser)`;
+                let dNum = dateStr.substring(0, 2);
+                let moisLabel = "";
+                let anneeStr = dateStr.length === 10 ? dateStr.substring(6, 10) : new Date().getFullYear();
+
+                if (meetingData && meetingData.start_time) {
+                    const dt = new Date(meetingData.start_time);
+                    const jours = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+                    const moisTab = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+                    const locStr = meetingData.location || "Lieu à préciser";
+                    
+                    dNum = dt.getDate().toString().padStart(2, '0');
+                    moisLabel = moisTab[dt.getMonth()];
+                    anneeStr = dt.getFullYear();
+                    exactDateLocationStr = `${jours[dt.getDay()]} ${dNum} ${moisLabel} ${anneeStr} au ${locStr}`;
+                } else {
+                    if (dateStr.length === 10) {
+                        const moisTab = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+                        const mIndex = parseInt(dateStr.substring(3, 5)) - 1;
+                        moisLabel = moisTab[mIndex] || '';
+                    }
+                }
+
+                // Pour "REUNION DU 05 MARS", on extrait le jour et le mois
+                let jourMoisStr = dateStr;
+                if (moisLabel && dNum) {
+                    jourMoisStr = `${dNum} ${moisLabel.toUpperCase()}`;
+                }
+
+                const aoa = [];
+                // Row 1 (Index 0)
+                aoa.push([null, null, null, null, null, null, "OBSERVATOIRE DU\nSERVICE PUBLIC"]); 
+                // Row 2 (Index 1)
+                aoa.push([
+                    "MINISTERE D'ETAT MINISTERE DE LA FONCTION PUBLIQUE\nET DE LA MODERNISATION DE L'ADMINISTRATION\n---------------------", 
+                    null, 
+                    titleStr
+                ]);
+                // Rows 3-6 (Index 2-5)
+                aoa.push([]);
+                aoa.push([]);
+                aoa.push([]);
+                aoa.push([]);
+                
+                // Row 7 (Index 6)
+                aoa.push([null, null, exactDateLocationStr]); 
+                
+                // Row 8 (Index 7)
+                aoa.push([]);
+                
+                // Row 9 (Index 8)
+                aoa.push([null, `REUNION DU ${jourMoisStr}`, null, "LISTE D'EMARGEMENT"]);
+                
+                // Row 10-11 (Index 9-10)
+                aoa.push([]);
+                aoa.push([]);
+                
+                // Row 12 (Index 11): En-têtes
+                aoa.push([
+                    "N°",
+                    "NOM ET PRENOMS",
+                    "FONCTION",
+                    "STRUCTURE",
+                    "CONTACT",
+                    "MONTANT",
+                    "EMMARGEMENT"
+                ]);
+
+                // Lignes de données (Index 12+)
+                finalData.forEach((p, index) => {
+                    aoa.push([
+                        index + 1,
+                        `${p.nom || ''} ${p.prenom || ''}`.trim(),
+                        p.fonction || '',
+                        p.structure || '',
+                        p.telephone || '',
+                        p.montant != null ? parseFloat(p.montant) : '',
+                        ''
+                    ]);
+                });
+
+                const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+                // Ajuster la largeur des colonnes
+                ws['!cols'] = [
+                    { wch: 5 },  // A: N°
+                    { wch: 30 }, // B: NOM ET PRENOMS
+                    { wch: 30 }, // C: FONCTION
+                    { wch: 40 }, // D: STRUCTURE
+                    { wch: 15 }, // E: CONTACT
+                    { wch: 15 }, // F: MONTANT
+                    { wch: 20 }, // G: EMMARGEMENT
+                    { wch: 15 }  // H: Observatoire
+                ];
+
+                // Fusions pour reproduire la grille du screenshot
+                ws['!merges'] = [
+                    // MINISTERE (A2:B4) => R1:C0 to R3:C1
+                    { s: { r: 1, c: 0 }, e: { r: 3, c: 1 } },
+                    // Center Title (C1:E5) => R0:C2 to R4:C4
+                    { s: { r: 0, c: 2 }, e: { r: 4, c: 4 } },
+                    // OBSERVATOIRE (G1:H4) => R0:C6 to R3:C7
+                    { s: { r: 0, c: 6 }, e: { r: 3, c: 7 } },
+                    // Date (C7:E7) => R6:C2 to R6:C4
+                    { s: { r: 6, c: 2 }, e: { r: 6, c: 4 } },
+                    // REUNION DU (B9:C9) => R8:C1 to R8:C2
+                    { s: { r: 8, c: 1 }, e: { r: 8, c: 2 } },
+                    // LISTE (D9:E9) => R8:C3 to R8:C4
+                    { s: { r: 8, c: 3 }, e: { r: 8, c: 4 } }
+                ];
+
+                // Activer l'encoche de tri (filtre automatique Excel) sur la ligne des en-têtes (row index 11)
+                const range = XLSX.utils.encode_range({
+                    s: { c: 0, r: 11 },
+                    e: { c: 6, r: 11 + finalData.length }
+                });
+                ws['!autofilter'] = { ref: range };
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Présences_CCMS');
+
+                const sanitizeLabel = meetingLabel.replace(/[^a-zA-Z0-9]/g, '_');
+                const fileName = `liste_d_emmargement_CCMS_2026_${sanitizeLabel}.xlsx`;
+                XLSX.writeFile(wb, fileName);
+                toast.success("Export Excel généré avec succès !");
+            }
+
+            // --- EXPORT PDF (jsPDF + autoTable) ---
+            function exportToPDF() {
+                if (!currentMeetingId) return toast.warning("Sélectionnez d'abord une réunion.");
+                
+                // On utilise désormais l'export SERVEUR qui gère parfaitement les images de signature 
+                // et le filtrage des participants validés (statut_staff = TRUE).
+                window.location.href = `/api/reports/attendance/${currentMeetingId}`;
+                toast.success("Génération du rapport PDF en cours...");
+            }
+        </script>
+</body>
+
+</html>

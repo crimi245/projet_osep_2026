@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement des Participants - Réunions Internes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0f1a;
+            --bg-card: #111827;
+            --fg: #f1f5f9;
+            --muted: #64748b;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --border: #1e293b;
+            --error: #ef4444;
+            --input-bg: #0d1321;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1,
+        h2,
+        h3,
+        label {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Animation d'arrière-plan */
+        .bg-pattern {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .bg-pattern::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.15) 0%, transparent 40%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        .grid-overlay {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        @keyframes bgMove {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(-5%, -5%) rotate(3deg);
+            }
+        }
+
+        /* Conteneur du formulaire */
+        .form-container {
+            position: relative;
+            z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow:
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: slideUp 0.8s ease forwards;
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* En-tête */
+        .form-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            opacity: 0;
+            animation: fadeIn 0.6s ease 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+            }
+        }
+
+        .form-header h1 {
+            font-size: clamp(1.75rem, 4vw, 2.25rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--fg) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .form-header p {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        /* Groupes du formulaire */
+        .form-grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (min-width: 480px) {
+            .form-row {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .form-group {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .form-group.visible {
+            animation: groupReveal 0.5s ease forwards;
+        }
+
+        @keyframes groupReveal {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Étiquettes */
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--fg);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.02em;
+        }
+
+        label .required {
+            color: var(--accent);
+            margin-left: 2px;
+        }
+
+        /* Champs de saisie */
+        .input-wrapper {
+            position: relative;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            color: var(--fg);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--muted);
+        }
+
+        input:hover,
+        select:hover,
+        textarea:hover {
+            border-color: rgba(100, 116, 139, 0.5);
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        select {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            background-size: 1rem;
+            padding-right: 2.5rem;
+        }
+
+        select option {
+            background: var(--bg-card);
+            color: var(--fg);
+            padding: 0.5rem;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* Type selection */
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .type-option {
+            position: relative;
+        }
+
+        .type-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .type-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            background: var(--input-bg);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .type-option label:hover {
+            border-color: rgba(100, 116, 139, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .type-option input[type="radio"]:checked+label {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.1);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .type-option input[type="radio"]:focus+label {
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .type-icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .type-option input[type="radio"]:checked+label .type-icon {
+            transform: scale(1.1);
+        }
+
+        .type-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--fg);
+        }
+
+        .type-desc {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 0.25rem;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        /* Bouton de soumission */
+        .submit-section {
+            margin-top: 2rem;
+            opacity: 0;
+        }
+
+        .submit-section.visible {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .submit-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -10px var(--accent-glow);
+        }
+
+        .submit-btn:hover::before {
+            transform: translateX(100%);
+        }
+
+        .submit-btn:active {
+            transform: translateY(-1px);
+        }
+
+        .submit-btn:focus-visible {
+            outline: 3px solid var(--accent-glow);
+            outline-offset: 3px;
+        }
+
+        /* Message de succès */
+        .success-message {
+            display: none;
+            text-align: center;
+            padding: 3rem 2rem;
+            animation: successPop 0.5s ease;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        @keyframes successPop {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.5rem;
+            background: rgba(16, 185, 129, 0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent);
+        }
+
+        .success-message h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .success-message p {
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .reset-btn {
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            color: var(--fg);
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* Réduction des mouvements */
+        @media (prefers-reduced-motion: reduce) {
+
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* Ajustements mobiles */
+        @media (max-width: 480px) {
+            .form-card {
+                padding: 1.5rem;
+                border-radius: 16px;
+            }
+
+            .type-selector {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-pattern">
+        <div class="grid-overlay"></div>
+    </div>
+
+    <main class="form-container">
+        <div class="form-card">
+            <form id="registrationForm">
+                <header class="form-header">
+                    <h1>Enregistrement Participant</h1>
+                    <p>Formulaire d'inscription aux reunions internes</p>
+                </header>
+
+                <div class="form-grid">
+                    <!-- Participant Info -->
+                    <div class="form-row">
+                        <div class="form-group" data-delay="0">
+                            <label for="prenom">Prenom <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="prenom" name="prenom" placeholder="Entrez le prenom" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group" data-delay="1">
+                            <label for="nom">Nom <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="nom" name="nom" placeholder="Entrez le nom" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" data-delay="2">
+                            <label for="email">Email <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="email" id="email" name="email" placeholder="exemple@email.com" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group" data-delay="3">
+                            <label for="fonction">Fonction</label>
+                            <div class="input-wrapper">
+                                <input type="text" id="fonction" name="fonction" placeholder="Ex: Charge de projet">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coordination -->
+                    <div class="form-group" data-delay="4">
+                        <label for="coordination">Coordination d'appartenance <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <select id="coordination" name="coordination" required>
+                                <option value="" disabled selected>Selectionnez votre coordination</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Type de reunion -->
+                    <div class="form-group" data-delay="5">
+                        <label>Type de reunion <span class="required">*</span></label>
+                        <div class="type-selector">
+                            <div class="type-option">
+                                <input type="radio" id="intra" name="typeReunion" value="intra" required>
+                                <label for="intra">
+                                    <svg class="type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                    <span class="type-label">Intra-coordination</span>
+                                    <span class="type-desc">Au sein de la coordination</span>
+                                </label>
+                            </div>
+                            <div class="type-option">
+                                <input type="radio" id="inter" name="typeReunion" value="inter" required>
+                                <label for="inter">
+                                    <svg class="type-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                                        <path
+                                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                                        </path>
+                                    </svg>
+                                    <span class="type-label">Inter-coordination</span>
+                                    <span class="type-desc">Entre coordinations</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Date et heure -->
+                    <div class="form-row">
+                        <div class="form-group" data-delay="6">
+                            <label for="date">Date de la reunion <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="date" id="date" name="date" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group" data-delay="7">
+                            <label for="heure">Heure <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="time" id="heure" name="heure" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lieu -->
+                    <div class="form-group" data-delay="8">
+                        <label for="lieu">Lieu de la reunion <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <select id="lieu" name="lieu" required>
+                                <option value="" disabled selected>Selectionnez le lieu</option>
+                                <option value="salle-a">Salle de reunion</option>
+                                <option value="salle-conf">Salle de conference</option>
+                                <option value="visio">Visioconference (Teams/Zoom)</option>
+                                <option value="exterieur">Lieu exterieur</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Objet -->
+                    <div class="form-group" data-delay="9">
+                        <label for="objet">Objet de la reunion <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <textarea id="objet" name="objet" placeholder="Decrivez brievement l'objet de la reunion..."
+                                required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="submit-section" data-delay="10">
+                    <button type="submit" class="submit-btn">Enregistrer le participant</button>
+                </div>
+            </form>
+
+            <!-- Success Message -->
+            <div class="success-message" id="successMessage">
+                <div class="success-icon">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h2>Enregistrement reussi</h2>
+                <p>Le participant a ete ajoute avec succes a la liste des participants.</p>
+                <button type="button" class="reset-btn" id="resetBtn">Enregistrer un autre participant</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialiser l'animation des groupes de formulaires
+        document.addEventListener('DOMContentLoaded', function () {
+            const formGroups = document.querySelectorAll('.form-group, .submit-section');
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const delay = entry.target.dataset.delay || 0;
+                        setTimeout(() => {
+                            entry.target.classList.add('visible');
+                        }, delay * 80);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            formGroups.forEach(group => observer.observe(group));
+
+            // Set min date to today
+            const dateInput = document.getElementById('date');
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.setAttribute('min', today);
+        });
+
+        // Soumission du formulaire
+        const form = document.getElementById('registrationForm');
+        const successMessage = document.getElementById('successMessage');
+        const resetBtn = document.getElementById('resetBtn');
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Collect form data
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            // Log data (in production, this would be sent to a server)
+            console.log('Participant enregistre:', data);
+
+            // Show success message
+            form.style.display = 'none';
+            successMessage.classList.add('show');
+        });
+
+        // Réinitialiser le formulaire
+        resetBtn.addEventListener('click', function () {
+            form.reset();
+            form.style.display = 'block';
+            successMessage.classList.remove('show');
+
+            // Re-trigger animations
+            const formGroups = document.querySelectorAll('.form-group, .submit-section');
+            formGroups.forEach(group => {
+                group.classList.remove('visible');
+                setTimeout(() => group.classList.add('visible'), 50);
+            });
+        });
+
+        // Ajouter des interactions subtiles aux champs
+        const inputs = document.querySelectorAll('input, select, textarea');
+        inputs.forEach(input => {
+            input.addEventListener('focus', function () {
+                this.parentElement.style.transform = 'scale(1.01)';
+                this.parentElement.style.transition = 'transform 0.2s ease';
+            });
+
+            input.addEventListener('blur', function () {
+                this.parentElement.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body>
+
+</html>

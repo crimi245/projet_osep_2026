@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projection Réunion - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0f3d2e;
+            --primary-light: #165c45;
+            --accent: #ea580c;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            font-family: 'Inter', sans-serif;
+            background: #ffffff;
+            color: #333;
+        }
+
+        .lobby-container {
+            display: flex;
+            flex-direction: column;
+            width: 100vw;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #f0fdf4, #ffffff);
+        }
+
+        header {
+            padding: 40px 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f3f4f6;
+        }
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-area h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin: 0;
+        }
+
+        .meeting-info {
+            text-align: right;
+        }
+
+        .meeting-info h2 {
+            font-size: 2.5rem;
+            color: #1f2937;
+            margin: 0;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 80px;
+            padding: 40px;
+        }
+
+        .qr-section {
+            text-align: center;
+            background: white;
+            padding: 50px;
+            border-radius: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+            border: 1px solid #f3f4f6;
+        }
+
+        .qr-section p {
+            font-size: 1.5rem;
+            color: #6b7280;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .qr-container {
+            position: relative;
+            width: 450px;
+            height: 450px;
+            margin: 0 auto;
+            background: #f9fafb;
+            padding: 20px;
+            border-radius: 30px;
+        }
+
+        .qr-image {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .logo-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            font-weight: 800;
+            color: var(--primary);
+            font-size: 2rem;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-section {
+            max-width: 500px;
+        }
+
+        .code-card {
+            background: #fff7ed;
+            border: 4px dashed #fdba74;
+            padding: 40px;
+            border-radius: 40px;
+            text-align: center;
+        }
+
+        .code-card h3 {
+            color: #9a3412;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .digital-code {
+            font-size: 8rem;
+            font-weight: 900;
+            color: var(--accent);
+            letter-spacing: 20px;
+            font-family: 'Inter', sans-serif;
+            margin: 20px 0;
+            text-shadow: 4px 4px 0px rgba(253, 186, 116, 0.3);
+        }
+
+        .code-instruction {
+            font-size: 1.4rem;
+            color: #c2410c;
+            line-height: 1.5;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: #fed7aa;
+            border-radius: 4px;
+            margin-top: 30px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 100%;
+            background: var(--accent);
+            transition: width 1s linear;
+        }
+
+        footer {
+            padding: 30px 60px;
+            display: flex;
+            justify-content: space-between;
+            background: var(--primary);
+            color: white;
+            font-size: 1.2rem;
+        }
+
+        .status-dot {
+            width: 15px;
+            height: 15px;
+            background: #22c55e;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            box-shadow: 0 0 10px #22c55e;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="lobby-container">
+        <header>
+            <div class="logo-area">
+                <img src="/public/logo.jpg" style="height: 80px; border-radius: 15px;">
+                <h1>OSEP</h1>
+            </div>
+            <div class="meeting-info">
+                <h2 id="meetingTitle">Chargement de la réunion...</h2>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="qr-section">
+                <p><i class="fa-solid fa-mobile-screen-button"></i> Scannez pour signer la présence</p>
+                <div class="qr-container">
+                    <img id="qrImage" class="qr-image" src="" alt="QR Code">
+                    <div class="logo-overlay">OSEP</div>
+                </div>
+                <div style="margin-top: 20px; color: #999; font-size: 1.1rem;">
+                    Mise à jour automatique toutes les 30s
+                </div>
+            </div>
+
+            <div class="code-section">
+                <div class="code-card">
+                    <h3>Code de Présence</h3>
+                    <p style="color: #666; margin-bottom: 10px;">(Si problème de localisation GPS)</p>
+                    <div id="challengeCode" class="digital-code">---</div>
+                    <p class="code-instruction">Tapez ce code sur votre téléphone<br>si la vérification échoue.</p>
+
+                    <div class="progress-container">
+                        <div id="progressBar" class="progress-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <div><span class="status-dot"></span> Système de Sécurité Bouclier OSEP Actif</div>
+            <div id="currentTime">00:00:00</div>
+        </footer>
+    </div>
+
+    <script>
+        const uuid = window.location.pathname.split('/').pop();
+        let refreshIntervalSec = 30; // fallback default
+        let timeRemainingSec = 30; // time until next refresh
+        let lastFetchTime = Date.now();
+
+        async function updateLobbyData() {
+            try {
+                const res = await fetch(`/api/public/lobby-data/${uuid}`);
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                if (data.isFinished) {
+                    window.location.href = `/reunion-terminee.html?uuid=${uuid}`;
+                    return;
+                }
+
+                document.getElementById('meetingTitle').innerText = data.title;
+                document.getElementById('qrImage').src = data.qr_code;
+                document.getElementById('challengeCode').innerText = data.challenge_code;
+
+                // Set the dynamic interval and remaining time from the server response
+                if (data.refresh_interval) {
+                    refreshIntervalSec = data.refresh_interval;
+                    timeRemainingSec = data.expires_in_challenge; // synchronized time left
+                    lastFetchTime = Date.now();
+                }
+
+            } catch (e) {
+                console.error("Lobby error", e);
+            }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('currentTime').innerText = now.toLocaleTimeString('fr-FR');
+
+            // Calculate the exact elapsed time since last fetch to have smooth client-side counting
+            const elapsedSinceFetch = Math.floor((Date.now() - lastFetchTime) / 1000);
+            let currentRemaining = timeRemainingSec - elapsedSinceFetch;
+
+            if (currentRemaining <= 0) {
+                // Time is up, fetch new data immediately, but prevent multiple simultaneous fetches
+                currentRemaining = 0;
+                // Wait briefly for the server to tick over if needed, though usually safe
+                updateLobbyData();
+                // Reset local state to avoid spamming the endpoint while we wait for the response
+                lastFetchTime = Date.now();
+                timeRemainingSec = refreshIntervalSec;
+            }
+
+            // Progression du code 
+            const progress = (currentRemaining / refreshIntervalSec) * 100;
+            document.getElementById('progressBar').style.width = Math.max(0, Math.min(100, progress)) + "%";
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateLobbyData();
+            setInterval(updateClock, 1000);
+            updateClock();
+        });
+    </script>
+</body>
+
+</html>

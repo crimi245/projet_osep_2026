@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Utilisateurs - Admin OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style-dashboard.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/live-search.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <style>
+        /* Styles spécifiques Administrateurs Utilisateurs */
+
+        .card-header-user {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .user-avatar-large {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Modale */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 450px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Badge de statut */
+        .status-badge {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-right: 10px;
+        }
+
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .user-card.inactive {
+            opacity: 0.7;
+            background: #fdfdfd;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="userSearchInput" placeholder="Rechercher un utilisateur...">
+                </div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 style="font-size: 0.9rem;" id="userFullName">Admin</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Gestion Utilisateurs</p>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=AD&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Comptes Utilisateurs</h1>
+                    <p>Configurez et personnalisez les accès de vos coordinateurs.</p>
+                </div>
+            </div>
+            <div class="header-btns">
+                <button class="btn-dark" onclick="openUserModal()"><i class="fa-solid fa-user-plus"></i> Nouveau
+                    Utilisateur</button>
+            </div>
+            <!-- Grille d'utilisateurs -->
+            <div class="osep-grid" id="usersGrid">
+                <!-- Les cartes utilisateurs seront générées ici par JavaScript -->
+                <p>Chargement des utilisateurs...</p>
+            </div>
+
+
+        </main>
+
+        <div class="modal-overlay" id="userModal">
+            <div class="modal-content">
+                <h2 style="margin-bottom:20px;">Nouveau Utilisateur</h2>
+                <form id="userForm" onsubmit="saveUser(event)">
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Nom complet</label>
+                        <input type="text" id="uName" required
+                            style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Sexe</label>
+                        <div style="display:flex; gap:20px;">
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                <input type="radio" name="uGender" value="M" checked> Homme (Mr)
+                            </label>
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+                                <input type="radio" name="uGender" value="F"> Femme (Mme)
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Login (Username)</label>
+                        <input type="text" id="uUsername" required
+                            style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Mot de passe</label>
+                        <input type="text" id="uPassword" required
+                            style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;"
+                            placeholder="Définir un mot de passe initial">
+                    </div>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Rôle</label>
+                        <select id="uRole" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+                            <option value="user">Utilisateur</option>
+                            <option value="admin">Administrateur</option>
+                            <option value="staff">Staff</option>
+                            <!-- Le rôle super_admin sera injecté dynamiquement si l'utilisateur actuel l'est -->
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom:15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:600;">Coordination</label>
+                        <select id="uCoordination"
+                            style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; margin-bottom: 5px;">
+                            <option value="">Sélectionner une coordination</option>
+                        </select>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <input type="checkbox" id="uNoCoord" onchange="toggleCoordinationInput()">
+                            <label for="uNoCoord" style="font-size:0.9rem; cursor:pointer;">Aucune coordination</label>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                        <button type="button" onclick="closeUserModal()"
+                            style="padding:10px 20px; border:none; background:#f3f4f6; border-radius:8px; cursor:pointer;">Annuler</button>
+                        <button type="submit"
+                            style="padding:10px 20px; border:none; background:var(--primary-dark); color:white; border-radius:8px; cursor:pointer;">Créer
+                            Utilisateur</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js?v=2"></script>
+        <!-- Le JS du thème a été déplacé dans le head -->
+        <script>
+            // Authentification gérée par le serveur et utilitaires.js
+
+            // --- LOGIQUE ADMIN UTILISATEURS ---
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                fetchUsers();
+                fetchCoordinationsForSelect();
+
+                // Ajouter l'option Super Admin si l'utilisateur actuel est super_admin
+                try {
+                    const res = await fetch('/api/user/me');
+                    if (res.ok) {
+                        const user = await res.json();
+                        if (user.role === 'super_admin') {
+                            const select = document.getElementById('uRole');
+                            const option = document.createElement('option');
+                            option.value = 'super_admin';
+                            option.text = 'Super Administrateur';
+                            select.appendChild(option);
+                        }
+                    }
+                } catch (e) { }
+
+                // Auto-fill head name on coordination change
+                document.getElementById('uCoordination').addEventListener('change', function() {
+                    const selectedId = this.value;
+                    if (!selectedId || isEditing) return; // Only for new users
+
+                    const coords = JSON.parse(sessionStorage.getItem('osep_coords_data_cache') || '[]');
+                    const selectedCoord = coords.find(c => c.id == selectedId);
+                    
+                    if (selectedCoord && selectedCoord.head_name) {
+                        // "sauf pour SP" - Check name and sigle
+                        const name = selectedCoord.name.toUpperCase();
+                        const sigle = (selectedCoord.sigle_coordination || '').toUpperCase();
+                        
+                        if (name !== 'SP' && sigle !== 'SP') {
+                            document.getElementById('uName').value = selectedCoord.head_name;
+                        }
+                    }
+                });
+            });
+
+            window.logout = async function () {
+                if (confirm("Voulez-vous vraiment vous déconnecter ?")) {
+                    try {
+                        await fetch('/api/auth/logout', { method: 'POST' });
+                        window.location.href = '/login?logout=success';
+                    } catch (e) {
+                        window.location.href = '/login';
+                    }
+                }
+            };
+
+            async function fetchUsers() {
+                try {
+                    const res = await fetch('/api/users?t=' + Date.now());
+                    if (!res.ok) throw new Error("Erreur API");
+                    const users = await res.json();
+                    renderUsers(users);
+                } catch (err) {
+                    console.error(err);
+                    document.getElementById('usersGrid').innerHTML = "<p>Impossible de charger les utilisateurs (API non disponible ?)</p>";
+                }
+            }
+
+            function renderUsers(users) {
+                const grid = document.getElementById('usersGrid');
+                grid.innerHTML = '';
+
+                users.forEach(user => {
+                    const isActive = user.is_active !== false;
+                    const statusBadge = isActive
+                        ? '<span class="status-badge status-active">Actif</span>'
+                        : '<span class="status-badge status-inactive">Inactif</span>';
+                    const toggleTitle = isActive ? 'Désactiver' : 'Activer';
+                    const toggleClass = isActive ? 'btn-light' : 'btn-dark';
+
+                    const card = `
+                <div class="osep-card ${isActive ? '' : 'inactive'}" data-username="${user.username}" data-fullname="${user.full_name || ''}" data-role="${user.role}">
+                    <div class="card-header-user">
+                        <div style="display:flex; gap:15px; align-items:center;">
+                            <img src="https://ui-avatars.com/api/?name=${user.full_name || user.username}&background=random" class="user-avatar-large">
+                            <div>
+                                <h3 style="margin:0;">${user.full_name || user.username}</h3>
+                                <p style="font-size:0.8rem; color:#666;">${user.role}</p>
+                            </div>
+                        </div>
+                        <div>${statusBadge}</div>
+                    </div>
+                    
+                    <div style="margin-top:20px; display:flex; gap:10px;">
+                        <button class="btn-light" style="flex:1; font-size:0.8rem;" onclick="editUser(${user.id})">Modifier</button>
+                        ${user.role !== 'super_admin' ? `<button class="${toggleClass}" style="flex:1; font-size:0.8rem;" onclick="toggleUserStatus(${user.id}, ${isActive})">${toggleTitle}</button>
+                        <button class="btn-light" style="flex:1; font-size:0.8rem; color:#ef4444; border-color:#fee2e2; background:#fee2e2;" onclick="event.stopPropagation(); deleteUser(${user.id}, '${user.username}')">Supprimer</button>` : ''}
+                    </div>
+                </div>
+                `;
+                    grid.innerHTML += card;
+                });
+            }
+
+            let isEditing = false;
+            let editingUserId = null;
+
+            function openUserModal(user = null) {
+                const modal = document.getElementById('userModal');
+                const title = modal.querySelector('h2');
+                const btn = document.getElementById('userForm').querySelector('button[type="submit"]');
+
+                if (user) {
+                    isEditing = true;
+                    editingUserId = user.id;
+                    title.innerText = "Modifier Utilisateur";
+                    btn.innerText = "Enregistrer les modifications";
+
+                    document.getElementById('uName').value = user.full_name || '';
+                    document.getElementById('uUsername').value = user.username;
+                    document.getElementById('uUsername').disabled = false; // Autoriser la modification du nom d'utilisateur
+                    document.getElementById('uPassword').value = '';
+                    document.getElementById('uPassword').placeholder = "Laisser vide pour ne pas changer";
+                    document.getElementById('uPassword').required = false;
+                    document.getElementById('uRole').value = user.role;
+
+                    // Gender
+                    if (user.gender === 'F') {
+                        document.querySelector('input[name="uGender"][value="F"]').checked = true;
+                    } else {
+                        document.querySelector('input[name="uGender"][value="M"]').checked = true;
+                    }
+
+                    // Coordination
+                    const coordSelect = document.getElementById('uCoordination');
+                    const noCoordCheck = document.getElementById('uNoCoord');
+                    if (user.coordination_id) {
+                        coordSelect.value = user.coordination_id;
+                        coordSelect.disabled = false;
+                        noCoordCheck.checked = false;
+                    } else {
+                        coordSelect.value = "";
+                        coordSelect.disabled = true;
+                        noCoordCheck.checked = true;
+                    }
+                } else {
+                    isEditing = false;
+                    editingUserId = null;
+                    title.innerText = "Nouveau Utilisateur";
+                    btn.innerText = "Créer Utilisateur";
+                    document.getElementById('userForm').reset();
+                    document.getElementById('uUsername').disabled = false;
+                    document.getElementById('uPassword').placeholder = "Définir un mot de passe initial";
+                    document.getElementById('uPassword').required = true;
+                    document.getElementById('uCoordination').disabled = false; // Activé par défaut
+                    document.getElementById('uNoCoord').checked = false;
+                }
+
+                modal.style.display = 'flex';
+            }
+
+            function closeUserModal() {
+                document.getElementById('userModal').style.display = 'none';
+            }
+
+            async function saveUser(e) {
+                e.preventDefault();
+                const fullName = document.getElementById('uName').value;
+                const username = document.getElementById('uUsername').value;
+                const password = document.getElementById('uPassword').value;
+                const role = document.getElementById('uRole').value;
+                const gender = document.querySelector('input[name="uGender"]:checked').value;
+
+                const hasCoord = !document.getElementById('uNoCoord').checked;
+                const coordinationId = hasCoord ? document.getElementById('uCoordination').value : null;
+
+                if (role === 'user' && hasCoord && !coordinationId) {
+                    toast.warning("Veuillez sélectionner une coordination");
+                    return;
+                }
+
+                try {
+                    let url = '/api/users';
+                    let method = 'POST';
+                    let body = { username, password, role, full_name: fullName, coordination_id: coordinationId, gender };
+
+                    if (isEditing) {
+                        url = `/api/users/${editingUserId}`;
+                        method = 'PUT';
+                        if (!password || password.trim() === '') {
+                            delete body.password;
+                        }
+                    }
+
+                    console.log(`Envoi de ${method} à ${url}`, body);
+
+                    const res = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+
+                    const data = await res.json();
+                    console.log("Réponse :", data);
+
+                    if (res.ok) {
+                        toast.success(isEditing ? 'Utilisateur modifié !' : 'Utilisateur créé !');
+                        closeUserModal();
+                        await fetchUsers(); // Attendre le rafraîchissement
+                    } else {
+                        toast.error("Erreur: " + (data.error || "Inconnue"));
+                    }
+                } catch (err) {
+                    console.error("Erreur d'enregistrement de l'utilisateur :", err);
+                    toast.error("Erreur réseau: " + err.message);
+                }
+            }
+
+            async function editUser(userId) {
+                try {
+                    // Rafraîchir la liste pour obtenir les données exactes de l'utilisateur (rôles, coord, etc.)
+                    const res = await fetch('/api/users');
+                    if (!res.ok) throw new Error("Erreur de chargement");
+
+                    const users = await res.json();
+                    const user = users.find(u => u.id === userId);
+
+                    if (user) {
+                        openUserModal(user);
+                    } else {
+                        toast.error("Utilisateur introuvable");
+                    }
+                } catch (e) {
+                    console.error(e);
+                    toast.error("Impossible de charger les données");
+                }
+            }
+
+            // Fonction de suppression de l'utilisateur
+            async function deleteUser(userId, username) {
+                const confirmed = await showConfirm(`Supprimer l'utilisateur "${username}" ?`, 'danger', {
+                    title: 'Suppression Utilisateur',
+                    confirmText: 'Supprimer'
+                });
+                if (!confirmed) return;
+
+                const deleteMeetings = await showConfirm(
+                    `Voulez-vous également supprimer toutes les réunions créées par "${username}" ?\n(Cliquez sur Annuler pour conserver ses réunions)`,
+                    'danger',
+                    {
+                        title: 'Supprimer les réunions ?',
+                        confirmText: 'Oui, supprimer'
+                    }
+                );
+
+                try {
+                    const res = await fetch(`/api/users/${userId}?deleteMeetings=${deleteMeetings}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (res.ok) {
+                        toast.success('Utilisateur supprimé avec succès !');
+                        fetchUsers();
+                    } else {
+                        const err = await res.json();
+                        toast.error('Erreur: ' + (err.error || 'Inconnue'));
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error('Erreur réseau');
+                }
+            }
+
+            async function toggleUserStatus(userId, currentStatus) {
+                const newStatus = !currentStatus;
+                const actionLabel = newStatus ? "activer" : "désactiver";
+
+                if (!confirm(`Voulez-vous ${actionLabel} cet utilisateur ?`)) return;
+
+                try {
+                    const res = await fetch(`/api/users/${userId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ is_active: newStatus })
+                    });
+
+                    if (res.ok) {
+                        toast.success(`Utilisateur ${newStatus ? 'activé' : 'désactivé'} !`);
+                        fetchUsers();
+                    } else {
+                        const data = await res.json();
+                        toast.error("Erreur: " + data.error);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Erreur réseau");
+                }
+            }
+
+            // Initialiser la recherche en temps réel
+            let userSearch;
+            document.addEventListener('DOMContentLoaded', () => {
+                userSearch = new LiveSearch('#userSearchInput', '#userGrid', {
+                    itemSelector: '.user-card',
+                    searchKeys: ['data-username', 'data-fullname', 'data-role', 'textContent'],
+                    debounceMs: 200
+                });
+            });
+
+            // Actualiser les éléments de recherche après le chargement des utilisateurs
+            const originalFetchUsers = fetchUsers;
+            fetchUsers = async function () {
+                await originalFetchUsers();
+                if (userSearch) {
+                    setTimeout(() => userSearch.refreshItems(), 100);
+                }
+            };
+
+            // --- MANQUANTS AJOUTÉS ---
+
+            async function fetchCoordinationsForSelect() {
+                try {
+                    const res = await fetch('/api/coordinations');
+                    if (res.ok) {
+                        const coordinations = await res.json();
+                        const select = document.getElementById('uCoordination');
+
+                        // Sauvegarder la valeur actuelle si on édite
+                        const currentValue = select.value;
+
+                        // Mettre en cache pour l'auto-remplissage
+                        sessionStorage.setItem('osep_coords_data_cache', JSON.stringify(coordinations));
+
+                        select.innerHTML = '<option value="">Sélectionner une coordination</option>';
+                        coordinations.forEach(c => {
+                            select.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                        });
+
+                        // Restaurer si possible, sinon laisser vide
+                        if (currentValue) select.value = currentValue;
+                    }
+                } catch (e) {
+                    console.error("Erreur chargement coordinations", e);
+                }
+            }
+
+            function toggleCoordinationInput() {
+                const checkBox = document.getElementById('uNoCoord');
+                const select = document.getElementById('uCoordination');
+
+                if (checkBox.checked) {
+                    select.value = "";
+                    select.disabled = true;
+                    select.style.opacity = "0.6";
+                } else {
+                    select.disabled = false;
+                    select.style.opacity = "1";
+                }
+            }
+        </script>
+</body>
+
+</html>

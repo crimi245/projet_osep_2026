@@ -1,0 +1,190 @@
+<aside class="sidebar" id="sidebar">
+    <div>
+        <div class="logo" onclick="window.location.href='/dashboard'" title="Retour au Tableau de bord">
+            <i class="fa-solid fa-layer-group"></i> OSEP
+        </div>
+        <nav class="menu">
+            <ul>
+                <li><a href="/dashboard"><i class="fa-solid fa-table-cells-large"></i> Tableau de bord</a></li>
+                <li class="menu-admin"><a href="/participation"><i class="fa-solid fa-users-viewfinder"></i>
+                        Participation</a></li>
+                <li class="menu-admin"><a href="/calendar"><i class="fa-regular fa-calendar"></i> Calendrier</a></li>
+                <li class="menu-admin active"><a href="/new-meeting"><i class="fa-solid fa-plus-circle"></i> Nouvelle
+                        Réunion</a></li>
+                <% if(user.role==='super_admin' ) { %>
+                    <li class="menu-admin"><a href="/stats"><i class="fa-solid fa-chart-area"></i> Statistiques</a></li>
+                    <% } %>
+                        <li class="menu-admin"><a href="/links"><i class="fa-solid fa-link"></i> Liens & QR</a></li>
+                        <% if(user.role !== 'super_admin') { %>
+                        <li class="menu-admin"><a href="/experience"><i class="fa-solid fa-wand-magic-sparkles"></i>
+                                Gestion
+                                Expérience</a></li>
+                        <% } %>
+                        <% if(user.role==='super_admin' ) { %>
+                            <li class="menu-admin"><a href="/coordination"><i class="fa-solid fa-user-group"></i>
+                                    Coordinations</a>
+                            </li>
+                            <li class="menu-admin"><a href="/logs"><i class="fa-solid fa-shield-halved"></i> SIEM /
+                                    Journaux</a>
+                            </li>
+                            <li class="menu-admin"><a href="/admin"><i class="fa-solid fa-users-gear"></i> Gestion
+                                    Utilisateurs</a>
+                            </li>
+                            <% } %>
+            </ul>
+        </nav>
+    </div>
+</aside>
+
+<!-- MODALE DE SELECTION DU TYPE DE REUNION -->
+<div id="meetingTypeModal" class="type-modal-overlay" style="display: none;">
+    <div class="type-modal-box">
+        <div class="type-modal-header">
+            <h3>Type de Réunion</h3>
+            <button onclick="closeMeetingTypeModal()" class="btn-close-modal"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="type-modal-body" id="meetingTypeOptions">
+            <!-- Options injectées dynamiquement par JS selon la coordination -->
+        </div>
+    </div>
+</div>
+
+<style>
+/* CSS de la modale type de réunion */
+.type-modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(5px);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+}
+.type-modal-box {
+    background: white; border-radius: 16px; width: 90%; max-width: 400px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+}
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; }}
+.type-modal-header {
+    background: var(--primary); color: white; padding: 15px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.type-modal-header h3 { margin: 0; font-size: 1.1rem; }
+.btn-close-modal { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
+.type-modal-body { padding: 20px; display: flex; flex-direction: column; gap: 10px; }
+.type-option-btn {
+    display: flex; align-items: center; gap: 15px; padding: 15px;
+    background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+    cursor: pointer; transition: all 0.2s; text-decoration: none; color: #334155;
+}
+.type-option-btn:hover { background: #f1f5f9; border-color: var(--primary); transform: translateY(-2px); }
+.type-option-icon {
+    width: 40px; height: 40px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(22, 163, 74, 0.1); color: var(--primary); font-size: 1.2rem;
+}
+.type-option-texts h4 { margin: 0 0 4px 0; font-size: 0.95rem; }
+.type-option-texts p { margin: 0; font-size: 0.8rem; color: #64748b; }
+</style>
+
+<script>
+function closeMeetingTypeModal() {
+    document.getElementById('meetingTypeModal').style.display = 'none';
+}
+
+function openMeetingTypeModal(e) {
+    if(e) e.preventDefault();
+    
+    // Récupérer le profil et le sigle_coordination (via session ou par défaut le nom de la coordination)
+    const profileDataStr = sessionStorage.getItem('osep_user_profile');
+    let coordId = '';
+    let coordName = '';
+    let userRole = '';
+    
+    if(profileDataStr) {
+        try {
+            const profile = JSON.parse(profileDataStr);
+            coordId = profile.coordination_id;
+            coordName = (profile.coordination_name || '').toUpperCase();
+            userRole = profile.role || '';
+        } catch(e){}
+    }
+    
+    // Déterminer les droits basés sur la liste des règles de gestion demandées:
+    // Admin (SP) : Peut créer CCMS, partenaire_externe, inter, intra.
+    // CGEN : Peut créer intra, extra, CODIR.
+    // CCRPMR (CCOM) : Peut créer intra, inter, CCMS.
+    // Autres : Uniquement inter & intra.
+    
+    const isSP = [10, 11].includes(parseInt(coordId)) || coordName.includes('CABINET') || coordName === 'SP' || userRole === 'super_admin';
+    const isCGEN = parseInt(coordId) === 8 || coordName.includes('CGEN') || coordName.includes('GENERALE') || userRole === 'super_admin';
+    const isCCRPMR = parseInt(coordId) === 7 || coordName.includes('CCRPMR') || coordName.includes('COMMUNICATION') || userRole === 'super_admin';
+    
+    let optionsHtml = '';
+    
+    // OSEP Standard (Inter/Intra) - Pour tout le monde
+    optionsHtml += `
+        <a href="/new-meeting?type=intra" class="type-option-btn">
+            <div class="type-option-icon"><i class="fa-solid fa-users"></i></div>
+            <div class="type-option-texts">
+                <h4>Intra-Coordination</h4>
+                <p>Réunion interne à votre service.</p>
+            </div>
+        </a>
+        <a href="/new-meeting?type=inter" class="type-option-btn">
+            <div class="type-option-icon"><i class="fa-solid fa-network-wired"></i></div>
+            <div class="type-option-texts">
+                <h4>Inter-Coordination</h4>
+                <p>Réunion avec d'autres services locaux.</p>
+            </div>
+        </a>
+    `;
+    
+    // CCMS / Externe (SP et CCRPMR)
+    if (isSP || isCCRPMR) {
+        optionsHtml += `
+            <a href="/new-meeting?type=ccms" class="type-option-btn">
+                <div class="type-option-icon" style="color:#eab308; background:rgba(234,179,8,0.1)"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <div class="type-option-texts">
+                    <h4>Comité CCMS</h4>
+                    <p>Réunion à incidence financière.</p>
+                </div>
+            </a>
+        `;
+    }
+    
+    // Partenaire Externe (SP)
+    if(isSP || isCGEN) {
+         optionsHtml += `
+            <a href="/new-meeting?type=partenaire_externe" class="type-option-btn">
+                <div class="type-option-icon" style="color:#3b82f6; background:rgba(59,130,246,0.1)"><i class="fa-solid fa-globe"></i></div>
+                <div class="type-option-texts">
+                    <h4>Partenaires Externes</h4>
+                    <p>Réunion avec des intervenants externes.</p>
+                </div>
+            </a>
+        `;
+    }
+    
+     // CODIR (CGEN)
+    if(isCGEN) {
+         optionsHtml += `
+            <a href="/new-meeting?type=codir" class="type-option-btn">
+                <div class="type-option-icon" style="color:#ef4444; background:rgba(239,68,68,0.1)"><i class="fa-solid fa-user-tie"></i></div>
+                <div class="type-option-texts">
+                    <h4>CODIR</h4>
+                    <p>Comité de Direction.</p>
+                </div>
+            </a>
+        `;
+    }
+    
+    document.getElementById('meetingTypeOptions').innerHTML = optionsHtml;
+    document.getElementById('meetingTypeModal').style.display = 'flex';
+}
+
+// Intercepter les clics sur les liens du menu
+document.addEventListener('DOMContentLoaded', () => {
+    const meetingLinks = document.querySelectorAll('a[href="/new-meeting"]');
+    meetingLinks.forEach(link => {
+        link.addEventListener('click', openMeetingTypeModal);
+    });
+});
+</script>

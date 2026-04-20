@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Réunion - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f3f4f6;
+            margin: 0;
+        }
+
+        .qr-card {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .qr-container {
+            position: relative;
+            width: 250px;
+            height: 250px;
+            margin: 20px auto;
+        }
+
+        .qr-image {
+            width: 100%;
+            height: 100%;
+        }
+
+        .logo-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #0f3d2e;
+            /* Vert OSEP */
+            font-size: 1.2rem;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .meeting-title {
+            margin-top: 20px;
+            color: #333;
+            font-size: 1.2rem;
+        }
+
+        .scan-me {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .link-text {
+            font-size: 0.8rem;
+            color: #888;
+            word-break: break-all;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="qr-card">
+        <h1 style="color:var(--primary);">OSEP</h1>
+        <p class="scan-me">Scannez pour rejoindre</p>
+
+        <div class="qr-container">
+            <img id="qrImage" class="qr-image" alt="QR Code" src="">
+            <div class="logo-overlay">OSEP</div>
+        </div>
+
+        <h3 id="meetingTitle" class="meeting-title">Chargement...</h3>
+        <p id="meetingUrl" class="link-text"></p>
+
+        <button onclick="window.print()" class="btn btn-primary" style="margin-top:20px;">Imprimer</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Extraire l'UUID du chemin de l'URL actuelle : /qr-view/:uuid (si nous routons de cette façon)
+            // Ou supposer un paramètre de requête ? L'utilisateur a demandé un nouveau fichier html.
+            // Supposons que nous servons ce fichier via une route comme /m/:uuid/qr
+
+            const pathParts = window.location.pathname.split('/');
+            // Attendu : /m/:uuid/qr
+            // parties : ["", "m", "uuid", "qr"] -> l'index 2 est l'uuid
+            const uuid = pathParts[2];
+
+            if (!uuid) return;
+
+            try {
+                const res = await fetch(`/api/public/qr/${uuid}`);
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                document.getElementById('qrImage').src = data.qrImage;
+                document.getElementById('meetingTitle').innerText = data.title;
+                document.getElementById('meetingUrl').innerText = data.url;
+
+            } catch (e) {
+                document.getElementById('meetingTitle').innerText = "Erreur";
+                console.error(e);
+            }
+        });
+    </script>
+</body>
+
+</html>

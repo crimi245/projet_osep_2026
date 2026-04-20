@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle Réunion - OSEP</title>
+    <!-- Fonts from Dashboard + Modern Design -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+
+    <!-- Dashboard Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+
+    <style>
+        /* 
+           INTÉGRATION CSS 
+           Nous gardons la mise en page globale du tableau de bord, mais stylisons le conteneur du formulaire
+           avec l'esthétique "Moderne" demandée, adaptée aux variables du thème.
+        */
+
+        /* Variables spécifiques pour la zone du formulaire correspondant au thème du tableau de bord */
+        .modern-wrapper {
+            --bg-card: #ffffff;
+            --fg: var(--text-main, #111827);
+            --muted: #64748b;
+            --accent: var(--primary, #16a34a);
+            /* Vert du tableau de bord */
+            --accent-glow: rgba(22, 163, 74, 0.2);
+            --border: var(--border-color, #e5e7eb);
+            --input-bg: #f8fafc;
+
+            font-family: 'DM Sans', sans-serif;
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .modern-wrapper h1,
+        .modern-wrapper h2,
+        .modern-wrapper label {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        /* Motif d'arrière-plan - Absolu par rapport au contenu principal */
+        .bg-pattern {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        .bg-pattern::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(59, 130, 246, 0.1) 0%, transparent 40%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(-5%, -5%) rotate(3deg);
+            }
+        }
+
+        /* Form Card */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow:
+                0 10px 30px -5px rgba(0, 0, 0, 0.05),
+                0 0 0 1px rgba(0, 0, 0, 0.02) inset;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: slideUp 0.8s ease forwards;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes slideUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Header */
+        .form-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .form-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--fg) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Inputs */
+        .input-wrapper {
+            position: relative;
+        }
+
+        .modern-input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--input-bg);
+            border: 1.5px solid var(--border);
+            border-radius: 12px;
+            color: var(--fg);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .modern-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+            background: white;
+        }
+
+        /* Type Selector */
+        .type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .type-option {
+            position: relative;
+        }
+
+        .type-option input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .type-label-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            background: var(--input-bg);
+            border: 2px solid var(--border);
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .type-option input:checked+.type-label-box {
+            border-color: var(--accent);
+            background: color-mix(in srgb, var(--accent), white 90%);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .type-icon {
+            width: 32px;
+            height: 32px;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        /* Animations */
+        .form-group {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .form-group.visible {
+            animation: groupReveal 0.5s ease forwards;
+        }
+
+        @keyframes groupReveal {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px var(--accent-glow);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .type-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Barre latérale dynamique rendue via EJS selon le rôle -->
+    <%- include('partials/' + sidebarFile) %>
+
+        <!-- Contenu Principal -->
+        <main class="main-content" style="position:relative;">
+
+            <!-- Barre de navigation -->
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="profileName">...</h4>
+                        </div>
+                        <img id="profileImg" src="">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Lien de retour -->
+            <div style="margin-bottom: 20px;">
+                <a href="/user" class="btn-light"
+                    style="display:inline-flex; align-items:center; gap:8px; text-decoration:none;">
+                    <i class="fa-solid fa-arrow-left"></i> Retour
+                </a>
+            </div>
+
+            <!-- MODERN FORM WRAPPER -->
+            <div class="modern-wrapper">
+                <div class="bg-pattern"></div>
+
+                <div class="form-card">
+                    <form id="meetingForm">
+                        <header class="form-header">
+                            <h1>Nouvelle Réunion</h1>
+                            <p style="color:var(--muted)">Planifiez votre prochaine session de travail</p>
+                        </header>
+
+                        <div style="display:grid; gap:1.5rem;">
+
+                            <!-- Coordination (Dynamic) -->
+                            <div class="form-group" data-delay="0">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Coordination <span
+                                        style="color:var(--accent)">*</span></label>
+                                <div class="input-wrapper">
+                                    <select id="coordination" name="coordination_id" class="modern-input" required>
+                                        <option value="" disabled selected>Chargement...</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Type (Caché et prérempli par l'URL ou gardé normal) -->
+                            <div class="form-group" data-delay="1" id="typeGroupContainer">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Type <span
+                                        style="color:var(--accent)">*</span></label>
+                                <div class="type-selector">
+                                    <div class="type-option">
+                                        <input type="radio" id="intra" name="meeting_type" value="intra" checked>
+                                        <label for="intra" class="type-label-box">
+                                            <i class="fa-solid fa-people-roof type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">Intra-coordination</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Interne</span>
+                                        </label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="inter" name="meeting_type" value="inter">
+                                        <label for="inter" class="type-label-box">
+                                            <i class="fa-solid fa-globe type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">Inter-coordination</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Global</span>
+                                        </label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="partenaire_externe" name="meeting_type"
+                                            value="partenaire_externe">
+                                        <label for="partenaire_externe" class="type-label-box">
+                                            <i class="fa-solid fa-handshake type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">Partenaire Externe</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Externe</span>
+                                        </label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="ccms" name="meeting_type" value="ccms">
+                                        <label for="ccms" class="type-label-box">
+                                            <i class="fa-solid fa-file-invoice-dollar type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">Comité CCMS</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Financier</span>
+                                        </label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="codir" name="meeting_type" value="codir">
+                                        <label for="codir" class="type-label-box">
+                                            <i class="fa-solid fa-user-tie type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">CODIR</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Direction</span>
+                                        </label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="codire" name="meeting_type" value="codire">
+                                        <label for="codire" class="type-label-box">
+                                            <i class="fa-solid fa-users-rectangle type-icon"
+                                                style="font-size:1.5rem; display:flex; justify-content:center; align-items:center;"></i>
+                                            <span style="font-weight:600;">CODIRE</span>
+                                            <span style="font-size:0.8rem; color:var(--muted)">Direction Élargi</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <script>
+                                // Validation stricte des types de réunions autorisés selon la Matrice
+                                document.addEventListener('DOMContentLoaded', async () => {
+                                    try {
+                                        const res = await fetch('/api/user-permissions');
+                                        if (res.ok) {
+                                            const data = await res.json();
+                                            const allowedTypes = data.allowed_meeting_types || [];
+
+                                            // Parcourir tous les boutons radios de types
+                                            const typeRadios = document.querySelectorAll('input[name="meeting_type"]');
+                                            typeRadios.forEach(radio => {
+                                                const container = radio.closest('.type-option');
+                                                if (allowedTypes.includes(radio.value)) {
+                                                    container.style.display = 'block';
+                                                } else {
+                                                    container.style.display = 'none';
+                                                    radio.disabled = true; // Empêcher la soumission
+                                                    radio.checked = false; // Désélectionner au cas où
+                                                }
+                                            });
+
+                                            // Si le type sélectionné par défaut n'est pas autorisé, sélectionner le premier autorisé
+                                            const checkedRadio = document.querySelector('input[name="meeting_type"]:checked');
+                                            if (!checkedRadio && allowedTypes.length > 0) {
+                                                const firstAllowed = document.querySelector(`input[name="meeting_type"][value="${allowedTypes[0]}"]`);
+                                                if (firstAllowed) firstAllowed.checked = true;
+                                            }
+                                        }
+
+                                        // Forcer un type si passé dans l'URL (si l'utilisateur a les droits)
+                                        const params = new URLSearchParams(window.location.search);
+                                        const typeParam = params.get('type');
+                                        if (typeParam) {
+                                            const radio = document.getElementById(typeParam);
+                                            if (radio && !radio.disabled) {
+                                                radio.checked = true;
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error('Erreur lors du chargement des permissions utilisateur:', err);
+                                    }
+                                });
+                            </script>
+
+                            <!-- Priorité -->
+                            <div class="form-group" data-delay="2">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Priorité</label>
+                                <div class="type-selector" style="grid-template-columns: repeat(3, 1fr);">
+                                    <div class="type-option">
+                                        <input type="radio" id="low" name="priority" value="low">
+                                        <label for="low" class="type-label-box" style="padding:0.8rem;">Basse</label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="medium" name="priority" value="medium" checked>
+                                        <label for="medium" class="type-label-box"
+                                            style="padding:0.8rem;">Moyenne</label>
+                                    </div>
+                                    <div class="type-option">
+                                        <input type="radio" id="high" name="priority" value="high">
+                                        <label for="high" class="type-label-box" style="padding:0.8rem;">Haute</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Date / Heure -->
+                            <div class="form-row">
+                                <div class="form-group" data-delay="3">
+                                    <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Date <span
+                                            style="color:var(--accent)">*</span></label>
+                                    <input type="date" id="date" name="date" class="modern-input" required>
+                                </div>
+                                <div class="form-group" data-delay="4">
+                                    <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Heure de début
+                                        <span style="color:var(--accent)">*</span></label>
+                                    <input type="time" name="heure" class="modern-input" required>
+                                </div>
+                            </div>
+
+                            <!-- Heure de fin -->
+                            <div class="form-group" data-delay="4.5">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Heure de fin <span
+                                        style="color:var(--accent)">*</span></label>
+                                <input type="time" name="end_time" class="modern-input" required>
+                            </div>
+
+                            <!-- Lieu -->
+                            <div class="form-group" data-delay="5">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Lieu <span
+                                        style="color:var(--accent)">*</span></label>
+                                <select name="location" class="modern-input" required>
+                                    <option>Salle de Conférence ANNE DESIREE OULOTTO</option>
+                                    <option>Bureau du Sécrétaire Permanent</option>
+                                    <option>Extérieur</option>
+                                    <option>Visio Conférence</option>
+                                    <option>Bureau de la Direction</option>
+                                </select>
+                            </div>
+
+                            <!-- Titre -->
+                            <div class="form-group" data-delay="6">
+                                <label style="font-weight:600; margin-bottom:0.5rem; display:block;">Objet <span
+                                        style="color:var(--accent)">*</span></label>
+                                <input type="text" name="title" class="modern-input"
+                                    placeholder="Ex: Point hebdomadaire..." required>
+                            </div>
+
+                        </div>
+
+                        <div class="submit-section" style="margin-top:2rem;" data-delay="7">
+                            <button type="submit" class="submit-btn" id="submitBtn">Créer la réunion</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Animer
+                const groups = document.querySelectorAll('.form-group, .submit-section');
+                groups.forEach((g, i) => {
+                    setTimeout(() => g.classList.add('visible'), i * 100);
+                });
+
+                // Date minimale
+                const d = document.getElementById('date');
+                const todayStr = new Date().toISOString().split('T')[0];
+                d.min = todayStr;
+
+                // Vérifier l'URL pour une date préremplie
+                const urlParams = new URLSearchParams(window.location.search);
+                const passedDate = urlParams.get('date');
+                if (passedDate) {
+                    // S'assurer que la date transmise est valide (>= aujourd'hui)
+                    if (passedDate >= todayStr) {
+                        d.value = passedDate;
+                    }
+                }
+
+                // Infos utilisateur et Coordinations
+                try {
+                    const [uRes, cRes] = await Promise.all([
+                        fetch('/api/user/me'),
+                        fetch('/api/coordinations')
+                    ]);
+
+                    let currentUser = null;
+                    if (uRes.ok) {
+                        currentUser = await uRes.json();
+                        document.getElementById('profileName').innerText = currentUser.fullname || currentUser.username;
+                        document.getElementById('profileImg').src = `https://ui-avatars.com/api/?name=${currentUser.fullname}&background=0f3d2e&color=fff`;
+                    }
+
+                    if (cRes.ok) {
+                        const coords = await cRes.json();
+                        const sel = document.getElementById('coordination');
+                        sel.innerHTML = '<option value="" disabled>Choisir...</option>';
+
+                        coords.forEach(c => {
+                            const opt = document.createElement('option');
+                            opt.value = c.id;
+                            opt.textContent = c.name;
+                            sel.appendChild(opt);
+                        });
+
+                        // Auto-sélection et verrouillage
+                        if (currentUser && currentUser.coordination_id) {
+                            sel.value = currentUser.coordination_id;
+                            // Ne pas donner la main pour changer (Verrouillage)
+                            sel.disabled = true;
+                            // Ajouter un champ caché pour que la valeur soit envoyée (si FormData est utilisé classiquement, mais ici on construit l'objet manuellement)
+                        } else {
+                            sel.selectedIndex = 0;
+                        }
+                    }
+                } catch (e) { console.error(e); }
+
+                // Soumettre
+                const form = document.getElementById('meetingForm');
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const btn = document.getElementById('submitBtn');
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Création...';
+                    btn.disabled = true;
+
+                    const fd = new FormData(form);
+                    const obj = Object.fromEntries(fd.entries());
+
+                    const startDateTime = new Date(`${obj.date}T${obj.heure}:00`);
+                    const endDateTime = new Date(`${obj.date}T${obj.end_time}:00`);
+                    const now = new Date();
+
+                    if (startDateTime < now) {
+                        showToast("Vous ne pouvez pas créer une réunion dans le passé !", 'warning');
+                        btn.innerHTML = 'Créer la réunion';
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    if (endDateTime <= startDateTime) {
+                        showToast("L'heure de fin doit être après l'heure de début !", 'warning');
+                        btn.innerHTML = 'Créer la réunion';
+                        btn.disabled = false;
+                        return;
+                    }
+
+                    const payload = {
+                        title: obj.title,
+                        start_time: startDateTime.toISOString(),
+                        end_time: endDateTime.toISOString(),
+                        location: obj.location,
+                        meeting_type: obj.meeting_type,
+                        priority: obj.priority,
+                        coordination_id: document.getElementById('coordination').value, // Utiliser la valeur directe car le select est disabled
+                        background_type: 'color',
+                        waiting_room_minutes: 30
+                    };
+
+                    try {
+                        const res = await fetch('/api/meetings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (res.ok) {
+                            const json = await res.json();
+                            showToast('Réunion créée !', 'success');
+                            setTimeout(() => {
+                                window.location.href = `/user?new_meeting_uuid=${json.uuid}&new_meeting_link=${encodeURIComponent(json.meeting_url)}&new_meeting_title=${encodeURIComponent(json.title)}`;
+                            }, 1000);
+                        } else {
+                            const err = await res.json();
+                            showToast(err.error || 'Erreur', 'error');
+                            btn.innerHTML = 'Créer la réunion';
+                            btn.disabled = false;
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showToast('Erreur réseau', 'error');
+                        btn.innerHTML = 'Créer la réunion';
+                        btn.disabled = false;
+                    }
+                });
+
+                // Déconnexion
+                window.logout = async function () {
+                    if (confirm("Voulez-vous vraiment quitter ?")) {
+                        try { await fetch('/api/auth/logout', { method: 'POST' }); }
+                        catch (e) { }
+                        window.location.href = '/login?logout=success';
+                    }
+                };
+            });
+        </script>
+</body>
+
+</html>

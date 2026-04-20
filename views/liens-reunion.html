@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liens & QR Codes - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <script src="/public/js/profile-dropdown.js?v=2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        /* --- DESIGN PREMIUM OSEP : EMERALD / DEEP SEA --- */
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        /* --- EFFET GLASSMORPHISM --- */
+        .meeting-card {
+            background: var(--glass-bg) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--glass-border) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05) !important;
+            border-radius: 20px !important;
+            padding: 25px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 30px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .meeting-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(16, 185, 129, 0.1) !important;
+        }
+
+        .meeting-info h2 {
+            margin-top: 0;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .qr-section {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            background: rgba(16, 185, 129, 0.05);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+
+        .qr-block canvas {
+            width: 120px !important;
+            height: 120px !important;
+            border-radius: 12px;
+            border: 1px solid white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .qr-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            margin-top: 10px;
+            color: var(--secondary);
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .link-box {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 10px;
+            font-family: 'Inter', monospace;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid var(--glass-border);
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 1.1rem;
+            padding: 5px;
+            transition: transform 0.2s;
+        }
+
+        .copy-btn:hover {
+            transform: scale(1.2);
+            color: var(--primary-dark);
+        }
+
+        .delete-btn {
+            background: #fee2e2;
+            color: #ef4444;
+            border: 1px solid #fecaca;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #ef4444;
+            color: white;
+        }
+
+        @media (max-width: 900px) {
+            .meeting-card {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="userFullName" style="font-size: 0.9rem;">Chargement...</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Liens & QR</p>
+                        </div>
+                        <img id="userAvatar"
+                            src="https://ui-avatars.com/api/?name=Utilisateur&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Mes Liens & QR Codes</h1>
+                    <p>Accès rapide aux formulaires et fiches de présence de vos réunions.</p>
+                </div>
+            </div>
+
+            <div id="meetingsList">
+                <p style="text-align:center; margin-top:40px; color:#888;">Chargement des réunions...</p>
+            </div>
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <script>
+            // Le basculement de la barre latérale est maintenant géré par utils.js
+
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    const userRes = await fetch('/api/user/me');
+                    if (!userRes.ok) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const user = await userRes.json();
+
+                    // Stocker le rôle globalement pour l'auto-rafraîchissement
+                    window.currentUserRole = user.role;
+
+                    const displayName = user.fullname || user.username;
+                    document.getElementById('userFullName').innerText = displayName;
+
+                    // Mettre à jour l'avatar
+                    const avatarImg = document.getElementById('userAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f3d2e&color=fff`;
+                    }
+
+                    // Charger les réunions avec les infos de rôle
+                    loadMeetings(user.role);
+                } catch (e) {
+                    console.error(e);
+                    window.location.href = '/login';
+                }
+            });
+
+            // Auto-refresh handler outside
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && window.currentUserRole) {
+                    console.log('Onglet visible, rafraîchissement des réunions...');
+                    loadMeetings(window.currentUserRole);
+                }
+            });
+
+            async function loadMeetings(userRole) {
+                // Se replier sur le rôle global si l'argument est manquant
+                userRole = userRole || window.currentUserRole;
+                try {
+                    const endpoint = (userRole === 'admin' || userRole === 'super_admin') ? '/api/meetings' : '/api/meetings/my';
+                    const res = await fetch(endpoint);
+                    if (!res.ok) {
+                        const txt = await res.text();
+                        throw new Error(txt || res.statusText);
+                    }
+                    const meetings = await res.json();
+
+                    const container = document.getElementById('meetingsList');
+                    container.innerHTML = '';
+
+                    if (meetings.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">Aucune réunion trouvée.</div>';
+                        return;
+                    }
+
+                    // SI ADMIN : Afficher groupé par rôle de créateur
+                    if (userRole === 'admin' || userRole === 'super_admin') {
+                        // Séparer les réunions par rôle de créateur
+                        const adminMeetings = meetings.filter(m => m.creator_role === 'admin' || m.creator_role === 'super_admin');
+                        const userMeetings = meetings.filter(m => m.creator_role !== 'admin' && m.creator_role !== 'super_admin');
+
+                        // Trier du plus récent au plus ancien
+                        adminMeetings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        userMeetings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                        // Afficher la section Admin
+                        if (adminMeetings.length > 0) {
+                            container.innerHTML += `
+                            <div style="margin-bottom: 30px;">
+                                <h2 style="color: var(--primary); font-size: 1.3rem; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid var(--primary);">
+                                    <i class="fa-solid fa-user-tie" style="margin-right: 10px;"></i>
+                                    Réunions créées par les Administrateurs
+                                </h2>
+                                <div id="adminMeetingsList"></div>
+                            </div>
+                        `;
+                            renderMeetings(adminMeetings, 'adminMeetingsList');
+                        }
+
+                        // Afficher la section Utilisateur
+                        if (userMeetings.length > 0) {
+                            container.innerHTML += `
+                            <div style="margin-bottom: 30px;">
+                                <h2 style="color: #6366f1; font-size: 1.3rem; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #6366f1;">
+                                    <i class="fa-solid fa-users" style="margin-right: 10px;"></i>
+                                    Réunions créées par les Utilisateurs
+                                </h2>
+                                <div id="userMeetingsList"></div>
+                            </div>
+                        `;
+                            renderMeetings(userMeetings, 'userMeetingsList');
+                        }
+                    }
+                    // SI UTILISATEUR STANDARD : Juste afficher "Mes Réunions"
+                    else {
+                        container.innerHTML = `
+                         <div style="margin-bottom: 30px;">
+                            <div id="allMeetingsList"></div>
+                        </div>
+                    `;
+                        // Trier par le plus récent
+                        meetings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                        renderMeetings(meetings, 'allMeetingsList');
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('meetingsList').innerHTML = '<p style="color:red; text-align:center;">Erreur de chargement.</p>';
+                }
+            }
+
+            // --- GESTION DES QR CODES DYNAMIQUES (Étape 4) ---
+            const activeIntervals = {};
+
+            async function updateDynamicQR(meetingId, uuid, isAdminMeeting) {
+                try {
+                    const res = await fetch(`/api/meetings/${uuid}/qr-token`);
+                    if (!res.ok) return;
+                    const { token } = await res.json();
+
+                    const urlStandard = `${window.location.origin}/meeting/${uuid}?t=${token}`;
+
+                    QRCode.toCanvas(document.getElementById(`qr-std-${meetingId}`), urlStandard, { width: 120, margin: 1 });
+
+                    // Mettre à jour les liens texte également pour la copie
+                    const card = document.getElementById(`meeting-card-${meetingId}`);
+                    if (card) {
+                        card.setAttribute('data-current-url-std', urlStandard);
+                        if (isAdminMeeting) {
+                            card.setAttribute('data-current-url-lobby', `${window.location.origin}/lobby/${uuid}`);
+                            QRCode.toCanvas(document.getElementById(`qr-lobby-${meetingId}`), `${window.location.origin}/lobby/${uuid}`, { width: 120, margin: 1 });
+                        }
+                    }
+
+                } catch (err) {
+                    console.warn('Erreur refresh QR:', err);
+                }
+            }
+
+            function startQRRotation(meetingId, uuid, isAdminMeeting) {
+                if (activeIntervals[meetingId]) clearInterval(activeIntervals[meetingId]);
+
+                // Premier refresh immédiat
+                updateDynamicQR(meetingId, uuid, isAdminMeeting);
+
+                // Rotation toutes les 30 secondes
+                activeIntervals[meetingId] = setInterval(() => {
+                    updateDynamicQR(meetingId, uuid, isAdminMeeting);
+                }, 30000);
+            }
+
+            function renderMeetings(meetings, containerId) {
+                const targetContainer = document.getElementById(containerId);
+                if (!targetContainer) return;
+
+                for (const m of meetings) {
+                    const date = new Date(m.start_time).toLocaleDateString('fr-FR');
+                    const time = new Date(m.start_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                    // URLs - Utiliser l'UUID pas l'ID
+                    const urlStandard = `${window.location.origin}/meeting/${m.uuid}`;
+                    const isAdminMeeting = (m.creator_role === 'admin' || m.creator_role === 'super_admin');
+
+                    const items = `
+                <div class="meeting-card" id="meeting-card-${m.id}" style="transition: opacity 0.3s ease, transform 0.3s ease;">
+                    <div class="meeting-info">
+                        <h2>${m.title}</h2>
+                        <p style="font-size:0.85rem; color:#888; margin:5px 0 10px 0;">
+                            <i class="fa-solid fa-user" style="margin-right:5px;"></i>Créé par: 
+                            <strong>${m.creator_full_name || m.creator_name || 'Inconnu'}</strong>
+                            ${m.username ? `<span style="color:#999;">(@${m.username})</span>` : ''}
+                        </p>
+                        <p style="color:#666; margin-bottom:15px;">
+                            <i class="fa-regular fa-calendar"></i> ${date} à ${time}
+                        </p>
+                        <p style="font-size:0.9rem; color:#555;">
+                            ${m.description || 'Aucune description'}
+                        </p>
+
+                        <div style="margin-top:20px;">
+                            <label style="font-size:0.8rem; font-weight:bold; color:var(--primary);">
+                                ${isAdminMeeting ? 'Lien de Présence (Public)' : 'Lien de participation (Redirection intelligente)'}
+                            </label>
+                            <div class="link-box">
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${urlStandard}</span>
+                                <button class="copy-btn" onclick="copyToClipFromCard(${m.id}, 'std')"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                            
+                            <button class="delete-btn" onclick="deleteMeeting(${m.id}, '${m.title.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i> Supprimer</button>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-block">
+                            <canvas id="qr-std-${m.id}"></canvas>
+                            <span class="qr-label">${isAdminMeeting ? 'Présence' : 'QR Code Unique'}</span>
+                            <div style="display:flex; justify-content:center; gap:10px; margin-top:5px;">
+                                <a href="${urlStandard}" target="_blank" style="font-size:0.7rem; color:var(--primary);">Ouvrir</a>
+                                <button onclick="copyToClipFromCard(${m.id}, 'std')" style="background:none; border:none; cursor:pointer; font-size:0.7rem; color:var(--primary);"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+                        ${isAdminMeeting ? `
+                        <div class="qr-block" style="background:#fff7ed; border:1px dashed #fdba74; border-radius:8px;">
+                            <canvas id="qr-lobby-${m.id}"></canvas>
+                            <span class="qr-label" style="color:#c2410c;">VUE LOBBY</span>
+                            <div style="display:flex; justify-content:center; gap:10px; margin-top:5px;">
+                                <a href="/lobby/${m.uuid}" target="_blank" style="font-size:0.7rem; color:#ea580c; font-weight:bold;">Projeter</a>
+                                <button onclick="copyToClipFromCard(${m.id}, 'lobby')" style="background:none; border:none; cursor:pointer; font-size:0.7rem; color:#ea580c;"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                `;
+                    targetContainer.innerHTML += items;
+
+                    // Lancer la rotation des QR Codes
+                    setTimeout(() => {
+                        startQRRotation(m.id, m.uuid, isAdminMeeting);
+                    }, 0);
+                }
+            }
+
+
+
+            function copyToClipFromCard(meetingId, type) {
+                const card = document.getElementById(`meeting-card-${meetingId}`);
+                let attr = 'data-current-url-std';
+                if (type === 'lobby') attr = 'data-current-url-lobby';
+
+                const text = card.getAttribute(attr);
+                copyToClip(text || 'Lien non prêt');
+            }
+
+            function copyToClip(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Lien dynamique copié !', 'success');
+                });
+            }
+
+            async function deleteMeeting(id, title) {
+                const confirmed = await showConfirm(`Supprimer la réunion "${title}" ?`, 'danger', {
+                    title: 'Suppression Réunion',
+                    confirmText: 'Supprimer'
+                });
+                if (!confirmed) return;
+
+                try {
+                    const res = await fetch(`/api/meetings/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        showToast(data.message || 'Réunion supprimée avec succès !', 'success');
+                        console.log('Meeting deleted successfully:', data);
+
+                        // Forcer le rechargement pour s'assurer que l'UI est synchronisée avec le backend
+                        setTimeout(() => window.location.reload(), 1000);
+                    } else {
+                        showToast(data.error || 'Erreur lors de la suppression', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('Erreur réseau', 'error');
+                }
+            }
+        </script>
+</body>
+
+</html>

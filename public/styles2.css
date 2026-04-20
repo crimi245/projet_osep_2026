@@ -1,0 +1,56 @@
+  /* Styles spécifiques pour la zone de signature */
+.signature-container {
+    text-align: center;
+    margin-top: 20px;
+}
+        
+canvas {
+    border: 2px solid #ff8c00; /* Bordure orange comme sur la photo */
+    border-radius: 4px;
+    background-color: white;
+    cursor: crosshair; /* Empêche le défilement de l'écran quand on dessine dessus sur mobile */
+    touch-action: none; 
+    max-width: 100%;
+}
+
+.btn-group {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-clear {
+    background-color: #17a2b8; /* Bleu/Gris pour effacer */
+    color: white;
+    padding: 10px;
+    border-radius: 15px 14px 15px 14px;
+    width: 100%;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.btn-green {
+    background-color: #28a745; 
+    border: none; padding: 10px; flex: 1;
+    border-radius: 15px 14px 15px 14px
+}
+        
+.btn-orange {
+    background-color: #ff8c00; /* Orange pour "Enregistrer" */
+    color: white;
+    border: none; padding: 10px; flex: 1;
+    border-radius: 15px 14px 15px 14px;
+        }
+#logo {
+    width: 100px;
+    height: auto;
+    display: block;
+    margin: 0 auto 10px auto;
+}
+#header {
+    background-color: #4CAF50;
+    color: white;
+    text-align: center;
+    padding: 10px;
+}

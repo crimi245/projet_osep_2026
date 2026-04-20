@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Liens & QR Codes</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/styles.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <script src="/public/js/profile-dropdown.js?v=2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .meeting-card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            border: 1px solid #f3f4f6;
+        }
+
+        .meeting-info h2 {
+            margin-top: 0;
+            color: var(--text-main);
+        }
+
+        .qr-section {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 12px;
+        }
+
+        .qr-block {
+            text-align: center;
+        }
+
+        .qr-block canvas {
+            width: 120px !important;
+            height: 120px !important;
+            border-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .qr-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 10px;
+            color: #555;
+            display: block;
+        }
+
+        .link-box {
+            background: #f3f4f6;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e5e7eb;
+        }
+
+        .copy-btn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .copy-btn:hover {
+            color: var(--primary-dark);
+        }
+
+        .delete-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            transition: background 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: #dc2626;
+        }
+
+        @media (max-width: 900px) {
+            .meeting-card {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="userFullName" style="font-size: 0.9rem;">Chargement...</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Liens & QR</p>
+                        </div>
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Mes Liens & QR Codes</h1>
+                    <p>Accès rapide aux formulaires et fiches de présence de vos réunions.</p>
+                </div>
+            </div>
+
+            <div id="meetingsList">
+                <p style="text-align:center; margin-top:40px; color:#888;">Chargement des réunions...</p>
+            </div>
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    const userRes = await fetch('/api/user/me');
+                    if (!userRes.ok) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const user = await userRes.json();
+
+                    // Définir les infos utilisateur
+                    const displayName = user.fullname || user.username;
+                    document.getElementById('userFullName').innerText = displayName;
+                    const avatarImg = document.getElementById('userAvatar');
+                    if (avatarImg) {
+                        avatarImg.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f3d2e&color=fff`;
+                    }
+
+                    loadMeetings();
+                } catch (e) {
+                    console.error(e);
+                    window.location.href = '/login';
+                }
+            });
+
+            // Actualisation automatique quand l'onglet devient visible
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    console.log('Onglet visible, rafraîchissement des réunions...');
+                    loadMeetings();
+                }
+            });
+
+            async function loadMeetings() {
+                try {
+                    // Pour les utilisateurs réguliers, nous utilisons toujours /api/meetings/my
+                    const res = await fetch('/api/meetings/my');
+                    if (!res.ok) throw new Error('API Error');
+                    const meetings = await res.json();
+
+                    const container = document.getElementById('meetingsList');
+                    container.innerHTML = '';
+
+                    if (meetings.length === 0) {
+                        container.innerHTML = '<div style="text-align:center; padding:40px; color:#999;">Aucune réunion trouvée.</div>';
+                        return;
+                    }
+
+                    // Trier du plus récent au plus ancien
+                    meetings.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+                    renderMeetings(meetings, 'meetingsList');
+
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('meetingsList').innerHTML = '<p style="color:red; text-align:center;">Erreur de chargement.</p>';
+                }
+            }
+
+            function renderMeetings(meetings, containerId) {
+                const targetContainer = document.getElementById(containerId);
+                if (!targetContainer) return;
+
+                for (const m of meetings) {
+                    const date = new Date(m.start_time).toLocaleDateString('fr-FR');
+                    const time = new Date(m.start_time).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                    const urlPartInt = `${window.location.origin}/participation-interne.html?uuid=${m.uuid}`;
+
+                    const items = `
+                <div class="meeting-card" id="meeting-card-${m.id}" style="transition: opacity 0.3s ease, transform 0.3s ease;">
+                    <div class="meeting-info">
+                        <h2>${m.title}</h2>
+                        <p style="font-size:0.85rem; color:#888; margin:5px 0 10px 0;">
+                            <i class="fa-solid fa-user" style="margin-right:5px;"></i>Créé par: 
+                            <strong>${m.creator_full_name || m.creator_name || 'Moi'}</strong>
+                        </p>
+                        <p style="color:#666; margin-bottom:15px;">
+                            <i class="fa-regular fa-calendar"></i> ${date} à ${time}
+                        </p>
+                        <p style="font-size:0.9rem; color:#555;">
+                            ${m.description || 'Aucune description'}
+                        </p>
+
+                        <div style="margin-top:20px;">
+                            <label style="font-size:0.8rem; font-weight:bold; color:var(--primary);">Lien d'enregistrement (Participant)</label>
+                            <div class="link-box">
+                                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${urlPartInt}</span>
+                                <button class="copy-btn" onclick="copyToClip('${urlPartInt}')"><i class="fa-regular fa-copy"></i></button>
+                            </div>
+                            
+                            <button class="delete-btn" onclick="deleteMeeting(${m.id}, '${m.title.replace(/'/g, "\\'")}')"><i class="fa-solid fa-trash"></i> Supprimer</button>
+                        </div>
+                    </div>
+
+                    <div class="qr-section">
+                        <div class="qr-block">
+                            <canvas id="qr-std-${m.id}"></canvas>
+                            <span class="qr-label">Présence</span>
+                            <a href="${urlPartInt}" target="_blank" style="font-size:0.7rem; color:var(--primary);">Ouvrir</a>
+                        </div>
+                    </div>
+                </div>
+                `;
+                    targetContainer.innerHTML += items;
+
+                    // Générer les codes QR
+                    setTimeout(() => {
+                        QRCode.toCanvas(document.getElementById(`qr-std-${m.id}`), urlPartInt, { width: 120, margin: 1 });
+                    }, 0);
+                }
+            }
+
+            function copyToClip(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('Lien copié !', 'success');
+                });
+            }
+
+            async function deleteMeeting(id, title) {
+                const confirmed = await showConfirm(`Supprimer la réunion "${title}" ?`, 'danger', {
+                    title: 'Suppression Réunion',
+                    confirmText: 'Supprimer'
+                });
+                if (!confirmed) return;
+
+                try {
+                    const res = await fetch(`/api/meetings/${id}`, {
+                        method: 'DELETE'
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        showToast(data.message || 'Réunion supprimée avec succès !', 'success');
+
+                        // Mise à jour optimiste de l'interface utilisateur
+                        const card = document.getElementById(`meeting-card-${id}`);
+                        if (card) {
+                            card.style.opacity = '0';
+                            card.style.transform = 'scale(0.95)';
+                            setTimeout(() => card.remove(), 300);
+                        }
+
+                        // Recharger en arrière-plan
+                        setTimeout(() => loadMeetings(), 500);
+                    } else {
+                        showToast(data.error || 'Erreur lors de la suppression', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('Erreur réseau', 'error');
+                }
+            }
+        </script>
+</body>
+
+</html>

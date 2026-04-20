@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salle d'Attente - OSEP</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            /* Thème vert (Défaut) */
+            --primary-color: #00A650;
+            --primary-dark: #007a3d;
+            --bg-gradient-start: #e0f8e9;
+            --bg-gradient-end: #ffffff;
+            --text-color: #1f2937;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.9);
+            --bubble-color: rgba(0, 166, 80, 0.2);
+            --bubble-pop: rgba(0, 166, 80, 0.6);
+        }
+
+        [data-theme="orange"] {
+            /* Thème orange */
+            --primary-color: #FF6600;
+            --primary-dark: #cc5200;
+            --bg-gradient-start: #fff0e0;
+            --bg-gradient-end: #ffffff;
+            --bubble-color: rgba(255, 102, 0, 0.2);
+            --bubble-pop: rgba(255, 102, 0, 0.6);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: var(--text-color);
+            position: relative;
+        }
+
+        /* Fond de jeu Zen Bubble */
+        #bubble-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: all;
+            /* Permettre l'interaction */
+        }
+
+        /* Carte Glassmorphism */
+        .waiting-card {
+            position: relative;
+            z-index: 10;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        .meeting-details {
+            background: rgba(255, 255, 255, 0.5);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+
+        .meeting-title {
+            font-weight: 600;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .time-badge {
+            display: inline-block;
+            background: var(--primary-color);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 999px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Compte à rebours */
+        .countdown-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .countdown-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .countdown-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary-color);
+            line-height: 1;
+        }
+
+        .countdown-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #9ca3af;
+            margin-top: 5px;
+        }
+
+        /* Bascule de thème */
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+
+        /* Superposition d'entrée */
+        #entering-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--primary-color);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+
+        #entering-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* Indicateur de chargement */
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-left-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Toile Zen Bubble -->
+    <canvas id="bubble-canvas"></canvas>
+
+    <!-- Bascule de thème -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Changer le thème">
+        <i class="fas fa-palette" style="color: var(--primary-color); font-size: 1.2rem;"></i>
+    </button>
+
+    <!-- Carte principale -->
+    <div class="waiting-card">
+        <h1>Bientôt prêt</h1>
+        <p class="subtitle">Votre réunion va commencer dans quelques instants.</p>
+
+        <div class="meeting-details">
+            <div class="meeting-title" id="meetingTitle">Chargement...</div>
+            <div class="time-badge" id="meetingTime">--:--</div>
+        </div>
+
+        <div class="countdown-grid" id="countdown">
+            <div class="countdown-item">
+                <span class="countdown-value" id="days">00</span>
+                <span class="countdown-label">Jours</span>
+            </div>
+            <div class="countdown-item">
+                <span class="countdown-value" id="hours">00</span>
+                <span class="countdown-label">Heures</span>
+            </div>
+            <div class="countdown-item">
+                <span class="countdown-value" id="minutes">00</span>
+                <span class="countdown-label">Min</span>
+            </div>
+            <div class="countdown-item">
+                <span class="countdown-value" id="seconds">00</span>
+                <span class="countdown-label">Sec</span>
+            </div>
+        </div>
+
+        <button class="time-badge" style="border: none; cursor: pointer; opacity: 0.8;" onclick="location.reload()">
+            <i class="fas fa-sync-alt"></i> Vérifier l'accès
+        </button>
+
+        <p style="font-size: 0.9rem; color: #9ca3af; margin-top: 1.5rem;">
+            <i class="fas fa-mouse-pointer"></i> Passez le temps en éclatant les bulles !
+        </p>
+    </div>
+
+    <!-- Superposition de transition -->
+    <div id="entering-overlay">
+        <div style="text-align: center;">
+            <div class="spinner" style="margin: 0 auto 20px auto;"></div>
+            <div>Entrée dans la réunion...</div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG & UTILS ---
+        const canvas = document.getElementById('bubble-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let activeGameInstance = null; // Déclaration de l'instance de jeu active
+
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            if (activeGameInstance && activeGameInstance.resize) activeGameInstance.resize(width, height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Assistant de thème
+        function getThemeColor() {
+            return getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+        }
+
+        // --- CLASSES DU MOTEUR DE JEU ---
+
+        // 1. Bulles Zen (Original)
+        class ZenBubbles {
+            constructor() {
+                this.bubbles = [];
+                this.init();
+            }
+            init() {
+                this.bubbles = [];
+                for (let i = 0; i < 30; i++) this.addBubble();
+                // Interaction
+                this.mouseHandler = (e) => this.checkPop(e.clientX, e.clientY);
+                window.addEventListener('mousemove', this.mouseHandler);
+                window.addEventListener('click', this.mouseHandler);
+            }
+            destroy() {
+                window.removeEventListener('mousemove', this.mouseHandler);
+                window.removeEventListener('click', this.mouseHandler);
+            }
+            resize(w, h) { width = w; height = h; }
+            addBubble() {
+                this.bubbles.push({
+                    x: Math.random() * width,
+                    y: height + Math.random() * 100,
+                    size: Math.random() * 30 + 10,
+                    speed: Math.random() * 1 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.1
+                });
+            }
+            updateAndDraw() {
+                ctx.clearRect(0, 0, width, height);
+                const color = getThemeColor();
+                this.bubbles.forEach((b, index) => {
+                    b.y -= b.speed;
+                    if (b.y < -50) Object.assign(b, { y: height + Math.random() * 100, x: Math.random() * width });
+
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+                    ctx.fillStyle = color;
+                    ctx.globalAlpha = b.opacity * 0.3;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                });
+            }
+            checkPop(mx, my) {
+                this.bubbles.forEach((b, i) => {
+                    const dx = mx - b.x;
+                    const dy = my - b.y;
+                    if (Math.sqrt(dx * dx + dy * dy) < b.size + 10) {
+                        // Effet d'éclatement (réinitialisation simple pour le moment)
+                        Object.assign(b, { y: height + Math.random() * 100, x: Math.random() * width });
+                    }
+                });
+            }
+        }
+
+        // 2. Gravity Bounce
+        class GravityBounce {
+            constructor() {
+                this.balls = [];
+                this.gravity = 0.5;
+                this.friction = 0.9;
+                this.init();
+            }
+            init() {
+                for (let i = 0; i < 15; i++) this.addBall();
+                this.clickHandler = (e) => this.explode(e.clientX, e.clientY);
+                window.addEventListener('click', this.clickHandler);
+            }
+            destroy() {
+                window.removeEventListener('click', this.clickHandler);
+            }
+            resize(w, h) { width = w; height = h; }
+            addBall() {
+                this.balls.push({
+                    x: Math.random() * width,
+                    y: Math.random() * (height / 2),
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: Math.random() * 5,
+                    radius: Math.random() * 20 + 10,
+                    color: getThemeColor()
+                });
+            }
+            updateAndDraw() {
+                ctx.clearRect(0, 0, width, height);
+                const themeColor = getThemeColor(); // Mettre à jour la couleur dynamique
+
+                this.balls.forEach(ball => {
+                    if (ball.y + ball.radius + ball.vy > height) {
+                        ball.vy = -ball.vy * this.friction;
+                    } else {
+                        ball.vy += this.gravity;
+                    }
+                    if (ball.x + ball.radius + ball.vx > width || ball.x - ball.radius <= 0) {
+                        ball.vx = -ball.vx;
+                    }
+                    ball.x += ball.vx;
+                    ball.y += ball.vy;
+
+                    ctx.beginPath();
+                    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = themeColor;
+                    ctx.fill();
+                    ctx.stroke();
+                });
+            }
+            explode(mx, my) {
+                this.balls.forEach(ball => {
+                    ball.vx = (ball.x - mx) * 0.1;
+                    ball.vy = (ball.y - my) * 0.1 - 5;
+                });
+            }
+        }
+
+        // 3. Attracteur de particules (Style Antigravité)
+        // 3. Attracteur de particules (Vortex Nébuleux - "L'Extracteur")
+        class ParticleAttractor {
+            constructor() {
+                this.particles = [];
+                this.colors = ['#FF6600', '#FFFFFF', '#00A650'];
+                this.mouse = { x: width / 2, y: height / 2, active: false };
+                this.explosions = []; // Stocker les ondes de choc
+                this.init();
+            }
+
+            init() {
+                this.particles = [];
+                // Réinitialiser tous les styles des modes précédents
+                const card = document.querySelector('.waiting-card');
+                if (card) {
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'all';
+                }
+                const canvas = document.getElementById('bubble-canvas');
+                if (canvas) canvas.style.zIndex = '0'; // Arrière-plan
+
+                const particleCount = 1500; // Augmenté de 600 pour l'effet "plusieurs particule"
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push(this.createParticle());
+                }
+
+                this.moveHandler = (e) => {
+                    this.mouse.x = e.clientX;
+                    this.mouse.y = e.clientY;
+                    this.mouse.active = true;
+                };
+                window.addEventListener('mousemove', this.moveHandler);
+
+                this.clickHandler = (e) => {
+                    this.createExplosion(e.clientX, e.clientY);
+                };
+                window.addEventListener('click', this.clickHandler);
+
+                this.touchHandler = (e) => {
+                    if (e.touches.length > 0) {
+                        this.mouse.x = e.touches[0].clientX;
+                        this.mouse.y = e.touches[0].clientY;
+                        this.mouse.active = true;
+                    }
+                };
+                window.addEventListener('touchmove', this.touchHandler);
+            }
+
+            createParticle() {
+                // Apparaître dans un cercle
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 200 + 100;
+                return {
+                    x: width / 2 + Math.cos(angle) * radius,
+                    y: height / 2 + Math.sin(angle) * radius,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: (Math.random() - 0.5) * 2,
+                    size: Math.random() * 3 + 1,
+                    color: this.colors[Math.floor(Math.random() * this.colors.length)],
+                    friction: 0.96,
+                    angle: angle // Stocker l'angle d'origine pour les calculs du vortex
+                };
+            }
+
+            createExplosion(x, y) {
+                this.explosions.push({
+                    x: x,
+                    y: y,
+                    radius: 1,
+                    maxRadius: 300,
+                    alpha: 1
+                });
+            }
+
+            destroy() {
+                window.removeEventListener('mousemove', this.moveHandler);
+                window.removeEventListener('click', this.clickHandler);
+                window.removeEventListener('touchmove', this.touchHandler);
+            }
+
+            resize(w, h) { width = w; height = h; }
+
+            updateAndDraw() {
+                // EFFET DE TRAÎNÉE : fillRect à faible opacité crée des queues
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.fillRect(0, 0, width, height);
+
+                // Mettre à jour les explosions
+                for (let i = this.explosions.length - 1; i >= 0; i--) {
+                    let expl = this.explosions[i];
+                    expl.radius += 10;
+                    expl.alpha -= 0.05;
+
+                    if (expl.alpha <= 0) {
+                        this.explosions.splice(i, 1);
+                        continue;
+                    }
+
+                    // Pousser les particules loin de l'explosion
+                    this.particles.forEach(p => {
+                        const dx = p.x - expl.x;
+                        const dy = p.y - expl.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (Math.abs(dist - expl.radius) < 20) {
+                            const force = 10;
+                            const angle = Math.atan2(dy, dx);
+                            p.vx += Math.cos(angle) * force;
+                            p.vy += Math.sin(angle) * force;
+                        }
+                    });
+
+                    // Dessiner l'onde de choc
+                    ctx.beginPath();
+                    ctx.arc(expl.x, expl.y, expl.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(255, 102, 0, ${expl.alpha})`;
+                    ctx.lineWidth = 5;
+                    ctx.stroke();
+                }
+
+                // Mettre à jour les particules
+                this.particles.forEach(p => {
+                    // Gravité du vortex central
+                    const cx = width / 2;
+                    const cy = height / 2;
+                    const dx = cx - p.x;
+                    const dy = cy - p.y;
+                    const distToCenter = Math.sqrt(dx * dx + dy * dy);
+
+                    // Force en spirale
+                    p.vx += dx * 0.001;
+                    p.vy += dy * 0.001;
+                    p.vx += -dy * 0.0005; // Force perpendiculaire pour la spirale
+                    p.vy += dx * 0.0005;
+
+                    // Interaction avec la souris (Trou noir)
+                    if (this.mouse.active) {
+                        const mdx = this.mouse.x - p.x;
+                        const mdy = this.mouse.y - p.y;
+                        const mDist = Math.sqrt(mdx * mdx + mdy * mdy);
+
+                        if (mDist < 300) {
+                            // Aspirer dans la souris
+                            p.vx += mdx * 0.02;
+                            p.vy += mdy * 0.02;
+                        }
+                    }
+
+                    p.vx *= p.friction;
+                    p.vy *= p.friction;
+                    p.x += p.vx;
+                    p.y += p.vy;
+
+                    // Limites (Envelopper ou rebondir ? Rebondissons pour le chaos)
+                    if (p.x < 0 || p.x > width) p.vx *= -1;
+                    if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                    // Dessiner
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+
+                    // Lignes de vitesse
+                    if (Math.abs(p.vx) + Math.abs(p.vy) > 5) {
+                        ctx.beginPath();
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p.x - p.vx * 2, p.y - p.vy * 2);
+                        ctx.strokeStyle = p.color;
+                        ctx.lineWidth = 1;
+                        ctx.stroke();
+                    }
+                });
+            }
+        }
+
+        // 4. Clicker Challenge
+        class ClickerChallenge {
+            constructor() {
+                this.target = { x: width / 2, y: height / 2, radius: 30 };
+                this.score = 0;
+                this.init();
+            }
+            init() {
+                this.moveTarget();
+                this.clickHandler = (e) => this.checkClick(e.clientX, e.clientY);
+                window.addEventListener('click', this.clickHandler);
+            }
+            destroy() {
+                window.removeEventListener('click', this.clickHandler);
+            }
+            resize(w, h) { width = w; height = h; }
+            moveTarget() {
+                this.target.x = 50 + Math.random() * (width - 100);
+                this.target.y = 50 + Math.random() * (height - 100);
+            }
+            checkClick(mx, my) {
+                const dx = mx - this.target.x;
+                const dy = my - this.target.y;
+                if (Math.sqrt(dx * dx + dy * dy) < this.target.radius) {
+                    this.score++;
+                    this.moveTarget();
+                    // Optionnel : Jouer un son
+                }
+            }
+            updateAndDraw() {
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = getThemeColor();
+
+                // Dessiner la cible
+                ctx.beginPath();
+                ctx.arc(this.target.x, this.target.y, this.target.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#fff';
+                ctx.stroke();
+
+                // Dessiner le score
+                ctx.font = 'bold 40px sans-serif';
+                ctx.fillStyle = getThemeColor();
+                ctx.fillText(`Score: ${this.score}`, 20, 50);
+            }
+        }
+
+        // --- CONTRÔLEUR DE JEU ---
+        // // Déplacé vers le haut
+        let activeGameName = 'zen'; // Défaut
+
+        function switchGame(gameName) {
+            if (activeGameName === gameName && activeGameInstance) return;
+
+            if (activeGameInstance) {
+                if (activeGameInstance.destroy) activeGameInstance.destroy();
+                activeGameInstance = null;
+            }
+
+            activeGameName = gameName;
+
+            switch (gameName) {
+                case 'gravity': activeGameInstance = new GravityBounce(); break;
+                case 'attractor': activeGameInstance = new ParticleAttractor(); break;
+                case 'clicker': activeGameInstance = new ClickerChallenge(); break;
+                case 'bubbles':
+                case 'zen':
+                default:
+                    activeGameInstance = new ZenBubbles();
+                    break;
+            }
+        }
+
+        // Boucle d'animation
+        function animate() {
+            if (activeGameInstance) activeGameInstance.updateAndDraw();
+            requestAnimationFrame(animate);
+        }
+        // Démarrer le jeu initial
+        switchGame('zen');
+        animate();
+
+
+        // --- TEMPS RÉEL & LOGIQUE ---
+
+        // Extraire l'UUID du chemin /meeting/:uuid
+        const pathParts = window.location.pathname.split('/');
+        let uuid = '';
+        for (let i = 0; i < pathParts.length; i++) {
+            if (pathParts[i] === 'meeting' && pathParts[i + 1]) {
+                uuid = pathParts[i + 1];
+                break;
+            }
+        }
+
+        let meetingStart = null;
+        let isEntering = false;
+        let lastStatus = null;
+
+        async function refreshStatus() {
+            if (!uuid || isEntering) return;
+
+            try {
+                const res = await fetch(`/api/public/meetings/${uuid}/status`);
+                const data = await res.json();
+
+                // 1. Vérifier l'accès à l'entrée (Ouverture forcée ou Heure)
+                if (data.canEnter) {
+                    enterMeeting();
+                    return;
+                }
+
+                // 2. Mettre à jour les infos de la réunion (Titre/Heure) si elles ont changé
+                document.getElementById('meetingTitle').textContent = data.title;
+                const newStart = new Date(data.startTime);
+                if (!meetingStart || newStart.getTime() !== meetingStart.getTime()) {
+                    meetingStart = newStart;
+                    document.getElementById('meetingTime').textContent = meetingStart.toLocaleString('fr-FR', {
+                        weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+                    }).replace(':', 'h');
+                }
+
+                // 3. Mettre à jour l'expérience (Thème & Jeu)
+                if (data.themeColor && (!lastStatus || lastStatus.themeColor !== data.themeColor)) {
+                    // Si c'est un forçage hexadécimal, nous pourrions avoir besoin d'une mise à jour de la variable CSS, mais pour l'instant nous supposons que c'est basé sur la classe ou géré par des variables css.
+                    // Attendez, le code précédent utilisait les variables :root.
+                    // Le backend envoie 'theme_color_override' qui pourrait être Hexadécimal.
+                    // Définissons directement la variable CSS.
+                    if (data.themeColor.startsWith('#')) {
+                        document.documentElement.style.setProperty('--primary-color', data.themeColor);
+                    }
+                }
+
+                // Jeu actif
+                if (data.activeGame && (!lastStatus || lastStatus.activeGame !== data.activeGame)) {
+                    switchGame(data.activeGame);
+                }
+
+                // Arrière-plan (Implémentation simple : changer le fond du corps si nécessaire, mais le dégradé est agréable)
+                // Si un arrière-plan spécial est demandé :
+                if (data.backgroundType === 'image' && data.backgroundValue) {
+                    document.body.style.backgroundImage = `url('${data.backgroundValue}')`;
+                    document.body.style.backgroundSize = 'cover';
+                }
+
+                lastStatus = data;
+
+            } catch (e) {
+                console.error("Erreur d'actualisation du statut", e);
+                // DÉBOGAGE : Afficher l'erreur à l'utilisateur
+                document.getElementById('meetingTitle').textContent = "Erreur : " + e.message;
+            }
+        }
+
+        // Logique du compte à rebours
+        function updateCountdown() {
+            if (!meetingStart) return;
+            const now = new Date();
+            const diff = meetingStart - now;
+
+            if (diff <= 0) {
+                // L'heure est atteinte !
+                refreshStatus(); // Vérifier l'accès immédiat
+                return;
+            }
+
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+            document.getElementById('days').textContent = String(days).padStart(2, '0');
+            document.getElementById('hours').textContent = String(hours).padStart(2, '0');
+            document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
+            document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
+        }
+
+        // Transition d'entrée à la réunion
+        function enterMeeting() {
+            if (isEntering) return;
+            isEntering = true;
+
+            const overlay = document.getElementById('entering-overlay');
+            overlay.classList.add('active'); // Afficher la superposition
+
+            // Optionnel : Vous pourriez afficher un message "L'administrateur a ouvert la séance !"
+
+            setTimeout(() => {
+                window.location.href = `/meeting/${uuid}`;
+            }, 1000);
+        }
+
+        // Init & Intervalle via Polling
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        
+        if (uuid && uuidRegex.test(uuid)) {
+            refreshStatus(); // Première récupération
+            setInterval(refreshStatus, 3000); // Interroger toutes les 3 secondes pour les mises à jour
+            setInterval(updateCountdown, 1000); // Mise à jour du compte à rebours local
+
+            // Rafraîchissement "brut" suggéré par le plan V2 pour garantir la fin de mise en cache
+            setInterval(() => {
+                if (!isEntering) {
+                    console.log("Heartbeat : Rafraîchissement pour vérifier l'accès...");
+                    location.reload();
+                }
+            }, 10000);
+        } else {
+            document.getElementById('meetingTitle').textContent = uuid ? "Erreur : UUID invalide" : "Erreur : UUID manquant dans l'URL";
+            if (uuid) console.warn("UUID non valide détecté:", uuid);
+        }
+
+        // Bascule Manuelle du Thème (Remplacement Local)
+        function toggleTheme() {
+            const current = getComputedStyle(document.documentElement).getPropertyValue('--primary-color').trim();
+            // Simple toggle between Green and Orange for local testing
+            const newColor = current === '#00A650' ? '#FF6600' : '#00A650';
+            document.documentElement.style.setProperty('--primary-color', newColor);
+            // Note: This might be overwritten by server poll 3s later, which is intended behavior (Admin controls experience)
+        }
+    </script>
+
+</body>
+
+</html>

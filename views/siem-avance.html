@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIEM Avancé - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+
+    <!-- Leaflet JS pour la Carte de Géolocalisation -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Chart.js pour l'IA -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="/public/js/toast.js"></script>
+    <script src="/public/js/theme.js"></script>
+    <style>
+        .advanced-siem-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto 1fr auto auto;
+            grid-template-areas:
+                "map ai-chart"
+                "sessions ai-feed"
+                "actions ai-feed"
+                "refused-logs refused-logs";
+            gap: 20px;
+            min-height: calc(100vh - 120px);
+            padding-bottom: 20px;
+        }
+
+        @media (max-width: 1200px) {
+            .advanced-siem-grid {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto auto auto;
+                grid-template-areas:
+                    "map"
+                    "ai-chart"
+                    "sessions"
+                    "actions"
+                    "ai-feed"
+                    "refused-logs";
+                height: auto;
+            }
+        }
+
+
+        .map-container {
+            grid-area: map;
+            height: 350px;
+            min-height: 350px;
+        }
+
+        .ai-chart-container {
+            grid-area: ai-chart;
+            height: 350px;
+            min-height: 350px;
+        }
+
+        .sessions-container {
+            grid-area: sessions;
+            overflow-y: auto;
+            min-height: 250px;
+        }
+
+        .actions-container {
+            grid-area: actions;
+            min-height: 250px;
+            overflow-y: auto;
+        }
+
+        .refused-logs-container {
+            grid-area: refused-logs;
+            overflow-y: auto;
+            min-height: 300px;
+        }
+
+        .ai-feed-container {
+            grid-area: ai-feed;
+            background: #1e293b;
+            color: #f8fafc;
+            overflow-y: auto;
+            position: relative;
+            min-height: 400px;
+        }
+
+        .ai-log-item {
+            padding: 10px;
+            border-bottom: 1px solid #334155;
+            font-size: 0.85rem;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            animation: slideIn 0.3s ease-out forwards;
+        }
+
+        .ai-log-time {
+            color: #94a3b8;
+            font-family: monospace;
+            min-width: 65px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-10px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        #geofencingMap {
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            z-index: 1;
+            /* Fixes sidebar overlapping map */
+        }
+
+        .sessions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .sessions-table th {
+            text-align: left;
+            padding: 12px;
+            background: #f8fafc;
+            border-bottom: 2px solid #e2e8f0;
+            font-weight: 600;
+        }
+
+        .sessions-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sessions-table tr:hover {
+            background: #f8fafc;
+            cursor: pointer;
+        }
+
+        .sessions-table tr.selected {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .intervention-pannel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .action-card {
+            padding: 15px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .action-card:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        .btn-intervention {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-disconnect {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn-disconnect:hover {
+            background: #fca5a5;
+        }
+
+        .btn-block {
+            background: #7f1d1d;
+            color: white;
+        }
+
+        .btn-block:hover {
+            background: #991b1b;
+        }
+
+        .fingerprint-data {
+            font-family: monospace;
+            background: #1e293b;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+
+        .badge-live {
+            background: #dcfce7;
+            color: #166534;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-live::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #16a34a;
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* Support Sidebar Collapsed State */
+        .main-content {
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .main-content.expanded {
+            margin-left: 0 !important;
+        }
+
+        @media (min-width: 768px) {
+            .sidebar.closed {
+                width: 80px;
+                /* Instead of hidden, it shrinks to show icons */
+                padding: 2rem 1rem;
+                opacity: 1 !important;
+                /* Override global .closed opacity element */
+            }
+
+            .sidebar.closed .logo {
+                font-size: 0;
+                justify-content: center;
+                margin-bottom: 2rem;
+            }
+
+            .sidebar.closed .logo i {
+                font-size: 1.8rem;
+                margin: 0;
+            }
+
+            .sidebar.closed .menu a span,
+            .sidebar.closed .menu a i:last-child {
+                display: none;
+                /* Hide text */
+            }
+
+            .sidebar.closed .menu a {
+                justify-content: center;
+                padding: 12px 0;
+            }
+
+            .sidebar.closed+.main-content {
+                margin-left: -180px;
+                /* Offset the difference (260 - 80) */
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main class="main-content"
+        style="background: #f8fafc; margin-left: 0 !important; width: 100vw !important; max-width: 100vw !important; min-height: 100vh;">
+        <header class="top-bar">
+            <a href="/logs" title="Retour au SIEM Normal"
+                style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; color: #475569; text-decoration: none; font-size: 1.2rem; transition: all 0.2s ease;">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div style="flex:1;">
+                <h2 style="margin: 0; font-size: 1.25rem;"><i class="fa-solid fa-satellite-dish"
+                        style="color: #3b82f6;"></i> Centre d'Opération de Sécurité (SIEM Avancé)</h2>
+            </div>
+            <div class="user-area" style="display: flex; gap: 15px; align-items: center;">
+                <select id="severitySelect" onchange="changeSeverity()"
+                    style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; background: white; font-size: 0.85rem; font-weight: 500; cursor: pointer;">
+                    <option value="FAIBLE">Sévérité Faible</option>
+                    <option value="NORMAL">Sévérité Normal</option>
+                    <option value="STRICT">Sévérité Strict</option>
+                </select>
+                <button id="btnToggleStaticQR" onclick="toggleStaticQR()" class="btn-intervention"
+                    style="margin: 0; padding: 6px 15px; width: auto; background: #0ea5e9; color: white;">
+                    <i class="fa-solid fa-qrcode"></i> Bypass QR Statique: OFF
+                </button>
+                <button id="btnToggleAI" onclick="toggleAIAgent()" class="btn-intervention"
+                    style="margin: 0; padding: 6px 15px; width: auto; background: #8b5cf6; color: white;">
+                    <i class="fa-solid fa-power-off"></i> Désactiver Bouclier EDR
+                </button>
+                <span class="badge-live">Connexion SSE Active</span>
+            </div>
+        </header>
+
+        <div class="advanced-siem-grid">
+
+            <!-- Carte de Géorepérage -->
+            <div class="osep-card map-container">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <h3 style="margin: 0;"><i class="fa-solid fa-earth-europe"></i> Géorepérage en Direct</h3>
+                    <div style="font-size: 0.85rem; color: #64748b;">Suivi des sessions sur le réseau global</div>
+                </div>
+                <div id="geofencingMap"></div>
+            </div>
+
+            <!-- Graphique IA -->
+            <div class="osep-card ai-chart-container">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <h3 style="margin: 0;"><i class="fa-solid fa-brain" style="color:#8b5cf6;"></i> Activité Agent
+                        IA
+                    </h3>
+                    <div style="font-size: 0.85rem; color: #64748b;">Scores de risque temps réel</div>
+                </div>
+                <div style="position: relative; height: 100%; width: 100%;">
+                    <canvas id="aiChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Liste des Sessions et Fingerprints -->
+            <div class="osep-card sessions-container">
+                <h3 style="margin: 0 0 15px 0;"><i class="fa-solid fa-fingerprint"></i> Empreintes de Navigateur
+                </h3>
+                <table class="sessions-table" id="sessionsTable">
+                    <thead>
+                        <tr>
+                            <th>Utilisateur</th>
+                            <th>Rôle</th>
+                            <th>IP / Empreinte</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sessionsBody">
+                        <!-- Rempli par JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Flux en direct IA -->
+            <div class="siem-panel ai-feed-container">
+                <h3 style="margin: 0 0 15px 0; color: #fff;"><i class="fa-solid fa-microchip"></i> Journal de l'IA
+                </h3>
+                <div id="aiFeed" style="display: flex; flex-direction: column;">
+                    <div class="ai-log-item"
+                        style="color: #94a3b8; text-align: center; border: none; justify-content: center;">
+                        L'Agent IA écoute le réseau...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Module d'Intervention Rapide -->
+            <div class="siem-panel actions-container">
+                <h3 style="margin: 0 0 15px 0;"><i class="fa-solid fa-bolt"></i> Intervention Rapide</h3>
+
+                <div id="noSelectionMsg" style="text-align: center; color: #94a3b8; margin-top: 40px;">
+                    <i class="fa-solid fa-hand-pointer" style="font-size: 2rem; margin-bottom: 15px;"></i>
+                    <p>Sélectionnez une session dans la liste pour voir les options d'intervention.</p>
+                </div>
+
+                <div id="interventionControls" class="intervention-pannel" style="display: none;">
+                    <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
+                        <div style="font-size: 0.8rem; color: #64748b; text-transform: uppercase; font-weight: 600;">
+                            Cible sélectionnée</div>
+                        <div id="targetName"
+                            style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 5px 0;"></div>
+                        <div id="targetMeta" style="font-size: 0.85rem; color: #475569;"></div>
+                    </div>
+
+                    <div style="margin-top: 10px;">
+                        <h4 style="margin: 0 0 10px 0; font-size: 0.9rem;">Détails de l'empreinte :</h4>
+                        <div id="fingerprintDetails" class="fingerprint-data"></div>
+                    </div>
+
+                    <div style="margin-top: auto; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                        <button class="btn-intervention btn-disconnect" onclick="applyIntervention('disconnect')">
+                            <i class="fa-solid fa-plug-circle-xmark"></i> Forcer la déconnexion
+                        </button>
+                        <button class="btn-intervention btn-block" onclick="applyIntervention('block')">
+                            <i class="fa-solid fa-user-lock"></i> Bloquer l'accès définitif
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique des accès refusés -->
+            <div class="osep-card refused-logs-container">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                    <h3 style="margin: 0;"><i class="fa-solid fa-shield-halved" style="color: #ef4444;"></i> Historique
+                        des Blocages EDR</h3>
+                    <button onclick="fetchRefusedLogs()" class="btn-intervention"
+                        style="margin: 0; padding: 4px 10px; width: auto; font-size: 0.85rem;"
+                        title="Rafraîchir les logs"><i class="fa-solid fa-rotate-right"></i></button>
+                </div>
+                <table class="sessions-table" id="refusedLogsTable">
+                    <thead>
+                        <tr>
+                            <th>Date / Heure</th>
+                            <th>Email Cible</th>
+                            <th>Empreinte</th>
+                            <th>Score IA</th>
+                            <th>Décision</th>
+                        </tr>
+                    </thead>
+                    <tbody id="refusedLogsBody">
+                        <!-- Rempli par JS -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        let map;
+        let markers = {};
+        let riskMarkers = []; // Nouveau pour le SIEM consolidé
+        let selectedSession = null;
+        let currentSessions = [];
+        let sseConnection;
+
+        // Variables IA
+        let aiChart;
+        let aiChartData = [];
+        let aiChartLabels = [];
+        const MAX_CHART_POINTS = 50;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initMap();
+            initEDRStatus();
+            initChart();
+            fetchSessions();
+            initSSE();
+            fetchRefusedLogs();
+        });
+
+        // Nettoyage SSE si l'administration quitte la page
+        window.addEventListener('beforeunload', () => {
+            if (sseConnection) sseConnection.close();
+        });
+
+        let meetingZone;
+
+        let currentTileLayer;
+        let isSatellite = true;
+
+        async function initMap() {
+            // Coordonnées par défaut (Abidjan) au cas où aucune réunion n'est active
+            let defaultCenter = [5.359951, -4.008256];
+            let radius = 1000;
+            let meetingTitle = "Zone par défaut";
+
+            try {
+                const res = await fetch('/api/siem/active-meeting-geo');
+                const data = await res.json();
+                if (data.success && data.meeting) {
+                    defaultCenter = [data.meeting.geo_lat, data.meeting.geo_lon];
+                    radius = data.meeting.geo_radius || 1000;
+                    meetingTitle = data.meeting.title;
+                    console.log("[SIEM] Géorepérage dynamique calé sur:", meetingTitle);
+                }
+            } catch (e) {
+                console.warn("Impossible de récupérer la zone de réunion active:", e);
+            }
+
+            map = L.map('geofencingMap', { zoomControl: false }).setView(defaultCenter, 13);
+
+            // On remet le contrôle de zoom en bas à droite pour ne pas gêner
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Définition des Tuiles Cartographiques
+            const googleSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 19, attribution: 'Tiles &copy; Esri'
+            });
+            const googleRoads = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                maxZoom: 19, attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            });
+
+            // Ajout de la tuile par défaut
+            googleSat.addTo(map);
+            currentTileLayer = googleSat;
+
+            // Contrôle natif pour basculer les cartes
+            const baseLayers = {
+                "🌐 Satellite 3D": googleSat,
+                "🗺️ Plan Classique": googleRoads
+            };
+            L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
+
+            // Création d'un bouton Plein Écran personnalisé
+            const fullscreenControl = L.control({ position: 'topleft' });
+            fullscreenControl.onAdd = function () {
+                const btn = L.DomUtil.create('button', 'leaflet-bar leaflet-control');
+                btn.innerHTML = '<i class="fa-solid fa-expand"></i>';
+                btn.style.width = '34px';
+                btn.style.height = '34px';
+                btn.style.backgroundColor = 'white';
+                btn.style.cursor = 'pointer';
+                btn.title = 'Agrandir la carte';
+                btn.onclick = toggleMapFullscreen;
+                return btn;
+            };
+            fullscreenControl.addTo(map);
+
+            meetingZone = L.circle(defaultCenter, {
+                color: '#10b981',
+                fillColor: '#34d399',
+                fillOpacity: 0.1,
+                radius: radius
+            }).addTo(map);
+            meetingZone.bindPopup(`<b>Zone Sécurisée (${radius}m)</b><br>Réunion: ${meetingTitle}`);
+
+            // Nouveau Layer Group pour les fraudes
+            riskLayer = L.layerGroup().addTo(map);
+            const overlayLayers = {
+                "⚠️ Alertes Fraude": riskLayer
+            };
+            L.control.layers(null, overlayLayers, { position: 'topright' }).addTo(map);
+        }
+
+        function toggleMapFullscreen() {
+            const container = document.querySelector('.map-container');
+            container.classList.toggle('fullscreen-map');
+
+            if (container.classList.contains('fullscreen-map')) {
+                // Styles injectés dynamiquement pour éviter de modifier massivement le CSS
+                Object.assign(container.style, {
+                    position: 'fixed',
+                    top: '0', left: '0', right: '0', bottom: '0',
+                    width: '100vw', height: '100vh',
+                    zIndex: '9999',
+                    borderRadius: '0',
+                    margin: '0'
+                });
+            } else {
+                container.removeAttribute('style');
+            }
+
+            // Dire à Leaflet de recalculer sa taille après 100ms
+            setTimeout(() => map.invalidateSize(), 100);
+        }
+
+        async function fetchSessions() {
+            try {
+                const res = await fetch('/api/siem/empreintes');
+                const data = await res.json();
+                if (data.success) {
+                    currentSessions = data.sessions;
+                    renderSessionsTable();
+                    plotMarkers();
+                } else {
+                    toast.error("Erreur de récupération des sessions actives.");
+                }
+            } catch (err) {
+                console.error(err);
+                toast.error("Échec de connexion à l'API SIEM.");
+            }
+        }
+
+        function renderSessionsTable() {
+            const tbody = document.getElementById('sessionsBody');
+            tbody.innerHTML = '';
+
+            currentSessions.forEach(sess => {
+                const tr = document.createElement('tr');
+                tr.onclick = () => selectSession(sess, tr);
+
+                // Extraire l'ID du navigateur depuis l'empreinte JSONB (mock ou réel)
+                let browserId = 'Inconnu';
+                if (sess.browser_fingerprint && sess.browser_fingerprint.visitorId) {
+                    browserId = sess.browser_fingerprint.visitorId.substring(0, 8) + '...';
+                }
+
+                const statusHTML = sess.force_disconnect
+                    ? '<span style="color:#ef4444; font-weight:600;"><i class="fa-solid fa-ban"></i> Éjecté</span>'
+                    : '<span style="color:#10b981; font-weight:600;"><i class="fa-solid fa-check-circle"></i> Actif</span>';
+
+                tr.innerHTML = `
+                    <td style="font-weight: 500;">${sess.full_name || sess.username}</td>
+                    <td><span style="font-size: 0.8rem; background: #e2e8f0; padding: 2px 8px; border-radius: 12px;">${sess.role}</span></td>
+                    <td style="font-family: monospace; font-size: 0.85rem; color: #475569;">${browserId}</td>
+                    <td>${statusHTML}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function selectSession(sess, trElement) {
+            // Reset styles
+            document.querySelectorAll('.sessions-table tr').forEach(el => el.classList.remove('selected'));
+            trElement.classList.add('selected');
+
+            selectedSession = sess;
+
+            // Mettre à jour le panneau d'intervention
+            document.getElementById('noSelectionMsg').style.display = 'none';
+            document.getElementById('interventionControls').style.display = 'flex';
+
+            document.getElementById('targetName').innerText = sess.full_name || sess.username;
+            document.getElementById('targetMeta').innerText = `Rôle: ${sess.role} | ID Système: ${sess.id}`;
+
+            const fpData = sess.browser_fingerprint || { msg: "Aucune empreinte collectée." };
+            document.getElementById('fingerprintDetails').innerText = JSON.stringify(fpData, null, 2);
+
+            // Centrer la carte sur l'utilisateur à l'échelle de la rue (Zoom 18)
+            if (sess.latitude && sess.longitude) {
+                map.flyTo([sess.latitude, sess.longitude], 18, {
+                    duration: 1.5 // Animation fluide
+                });
+            }
+        }
+
+        function plotMarkers() {
+            currentSessions.forEach(sess => {
+                if (sess.latitude && sess.longitude) {
+                    const idKey = `${sess.role}_${sess.id}`;
+
+                    if (!markers[idKey]) {
+                        // Couleur différente si déconnecté de force
+                        const color = sess.force_disconnect ? 'red' : 'blue';
+                        const markerHtml = `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`;
+                        const icon = L.divIcon({ html: markerHtml, className: '' });
+
+                        const marker = L.marker([sess.latitude, sess.longitude], { icon }).addTo(map);
+                        marker.bindPopup(`<b>${sess.username}</b><br>Rôle: ${sess.role}`);
+                        markers[idKey] = marker;
+                    }
+                }
+            });
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('aiChart').getContext('2d');
+            aiChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: aiChartLabels,
+                    datasets: [{
+                        label: 'Score de Risque IA',
+                        data: aiChartData,
+                        borderColor: '#8b5cf6',
+                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: { borderDash: [2, 4], color: '#e2e8f0' }
+                        },
+                        x: {
+                            display: false // Masquer labels X pour affichage continu
+                        }
+                    },
+                    plugins: { legend: { display: false } },
+                    animation: { duration: 0 } // Désactive anim par défaut pour feed fluide
+                }
+            });
+        }
+
+        function pushAILog(logData) {
+            if (!aiAgentActive && logData.target !== 'Système') return; // Ignore les alertes si désactivé
+
+            // Mise à jour Graphique IA avec .shift() pour économiser la mémoire
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            aiChartLabels.push(timeStr);
+            aiChartData.push(logData.riskScore || 0);
+
+            if (aiChartLabels.length > MAX_CHART_POINTS) {
+                aiChartLabels.shift();
+                aiChartData.shift();
+            }
+            aiChart.update();
+
+            // Mise à jour Flux DOM
+            const feed = document.getElementById('aiFeed');
+            const placeholder = feed.querySelector('.ai-log-item[style*="text-align: center"]');
+            if (placeholder) placeholder.remove();
+
+            const logHtml = document.createElement('div');
+            logHtml.className = 'ai-log-item';
+
+            // Iconologie selon score
+            let iconHtml = '<i class="fa-solid fa-robot" style="color:#8b5cf6;"></i>';
+            if (logData.riskScore > 50) iconHtml = '<i class="fa-solid fa-triangle-exclamation" style="color:#ef4444;"></i>';
+            else if (logData.riskScore < 20) iconHtml = '<i class="fa-solid fa-check-circle" style="color:#10b981;"></i>';
+
+            logHtml.innerHTML = `
+                <div class="ai-log-time">${timeStr}</div>
+                <div>${iconHtml}</div>
+                <div style="flex:1;">
+                    <strong style="color:#e2e8f0;">${logData.target}</strong> : 
+                    <span style="color:#cbd5e1;">${logData.message}</span>
+                </div>
+            `;
+
+            // Ajouter en haut du feed
+            feed.insertBefore(logHtml, feed.firstChild);
+
+            // Curer le DOM (Garder 50 divs max)
+            while (feed.children.length > 50) {
+                feed.removeChild(feed.lastChild);
+            }
+        }
+
+        function initSSE() {
+            // Reconnexion automatique gérée par EventSource natif
+            sseConnection = new EventSource('/api/siem/alertes/stream');
+
+            // MULTIPLEXAGE: Écoute de geo_alerte
+            sseConnection.addEventListener('geo_alerte', (event) => {
+                try {
+                    const alertData = JSON.parse(event.data);
+                    toast.warning(`Alerte Géorepérage : ${alertData.username} s'est connecté hors-zone !`);
+                    fetchSessions();
+                } catch (e) { }
+            });
+
+            // MULTIPLEXAGE: Écoute de action_ia
+            sseConnection.addEventListener('action_ia', (event) => {
+                try {
+                    const actionData = JSON.parse(event.data);
+                    pushAILog(actionData);
+                } catch (e) { }
+            });
+
+            sseConnection.onerror = (err) => {
+                console.warn("Connexion SSE perdue. Tentative de reconnexion...");
+            };
+        }
+
+        async function applyIntervention(actionType) {
+            if (!selectedSession) return;
+
+            const actionLabels = {
+                'disconnect': 'forcer la déconnexion de',
+                'block': 'bloquer définitivement'
+            };
+
+            if (!confirm(`Voulez-vous vraiment ${actionLabels[actionType]} "${selectedSession.username}" ?`)) return;
+
+            try {
+                const res = await fetch('/api/siem/intervention', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        targetId: selectedSession.id,
+                        targetType: selectedSession.role, // 'user' ou 'participant'
+                        actionType: actionType,
+                        reason: `Intervention SIEM Avancé manuelle`
+                    })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    toast.success(data.message);
+                    fetchSessions(); // Rafraîchir l'affichage
+                } else {
+                    toast.error(data.error || "Erreur lors de l'intervention");
+                }
+            } catch (e) {
+                toast.error("Échec de la communication avec le serveur.");
+            }
+        }
+
+
+        let aiAgentActive = true;
+        let bypassStaticQRActive = false;
+        let aiSeverity = 'NORMAL';
+
+        async function initEDRStatus() {
+            try {
+                const res = await fetch('/api/siem/edr-status');
+                const data = await res.json();
+                if (data.success) {
+                    aiAgentActive = data.active;
+                    aiSeverity = data.severity;
+                    bypassStaticQRActive = data.bypassStaticQR;
+                    updateEDRButtonUI();
+                    updateStaticQRButtonUI();
+                    document.getElementById('severitySelect').value = aiSeverity;
+                }
+            } catch (err) {
+                console.error("Échec du chargement du statut EDR", err);
+            }
+        }
+
+        function updateEDRButtonUI() {
+            const btn = document.getElementById('btnToggleAI');
+            if (aiAgentActive) {
+                btn.innerHTML = '<i class="fa-solid fa-power-off"></i> Désactiver Bouclier EDR';
+                btn.style.background = '#8b5cf6';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-play"></i> Activer Bouclier EDR';
+                btn.style.background = '#ef4444';
+            }
+        }
+
+        function updateStaticQRButtonUI() {
+            const btn = document.getElementById('btnToggleStaticQR');
+            if (bypassStaticQRActive) {
+                btn.style.background = '#10b981';
+                btn.innerHTML = '<i class="fa-solid fa-qrcode"></i> Bypass QR Statique: ON';
+            } else {
+                btn.style.background = '#0ea5e9';
+                btn.innerHTML = '<i class="fa-solid fa-qrcode"></i> Bypass QR Statique: OFF';
+            }
+        }
+
+        async function toggleAIAgent() {
+            const newState = !aiAgentActive;
+            try {
+                const res = await fetch('/api/siem/toggle-edr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: newState })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    aiAgentActive = newState;
+                    updateEDRButtonUI();
+                    toast.success(data.message);
+                    pushAILog({ 
+                        target: 'Système', 
+                        message: newState ? 'Bouclier EDR réactivé.' : 'Bouclier EDR désactivé.', 
+                        riskScore: newState ? 5 : 0 
+                    });
+                }
+            } catch (e) { toast.error("Erreur commande EDR"); }
+        }
+
+        async function toggleStaticQR() {
+            const newState = !bypassStaticQRActive;
+            try {
+                const res = await fetch('/api/siem/toggle-static-qr', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ active: newState })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    bypassStaticQRActive = newState;
+                    updateStaticQRButtonUI();
+                    toast.success(data.message);
+                    pushAILog({ 
+                        target: 'Système', 
+                        message: newState ? 'Bypass QR Statique activé.' : 'Bypass QR Statique désactivé.', 
+                        riskScore: 2 
+                    });
+                }
+            } catch (e) { toast.error("Erreur commande Bypass QR"); }
+        }
+
+        async function changeSeverity() {
+            const select = document.getElementById('severitySelect');
+            const newSeverity = select.value;
+            try {
+                const res = await fetch('/api/siem/severity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ severity: newSeverity })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    aiSeverity = data.severity;
+                    toast.success(data.message);
+                    pushAILog({ target: 'Système', message: `Sévérité du Bouclier EDR passée à ${aiSeverity}`, riskScore: 10 });
+                } else {
+                    toast.error(data.error || "Erreur lors du changement de sévérité");
+                    select.value = aiSeverity;
+                }
+            } catch (err) {
+                toast.error("Erreur de communication API");
+                select.value = aiSeverity;
+            }
+        }
+
+        async function fetchRefusedLogs() {
+            try {
+                const res = await fetch('/api/siem/refused-logs');
+                const data = await res.json();
+                if (data.success) {
+                    const tbody = document.getElementById('refusedLogsBody');
+                    tbody.innerHTML = '';
+                    if (data.logs.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px; color:#64748b;">Aucun blocage sécurité récent.</td></tr>';
+                        return;
+                    }
+                    data.logs.forEach(log => {
+                        const tr = document.createElement('tr');
+                        const date = new Date(log.created_at).toLocaleString('fr-FR');
+                        const shortId = log.empreinte_appareil ? log.empreinte_appareil.substring(0, 12) + '...' : 'Inconnu';
+                        let badgeColor = log.decision === 'BLOCK' ? '#ef4444' : '#f59e0b';
+                        const scoreBad = log.score_confiance_ia <= 30;
+                        tr.innerHTML = `
+                            <td style="font-size: 0.85rem; color: #475569;">${date}</td>
+                            <td style="font-weight: 500;">${log.adresse_email || 'Inconnu'}</td>
+                            <td style="font-family: monospace; font-size: 0.85rem; color:#475569;">${shortId}</td>
+                            <td><span style="font-weight: bold; color: ${scoreBad ? '#ef4444' : '#10b981'};">${log.score_confiance_ia}</span>/100</td>
+                            <td><span style="font-size: 0.75rem; color: white; background: ${badgeColor}; padding: 3px 6px; border-radius: 4px; font-weight:bold;">${log.decision}</span></td>
+                        `;
+                        tbody.appendChild(tr);
+                        if (log.metadonnees && log.metadonnees.gps) {
+                            const { lat, lng } = log.metadonnees.gps;
+                            if (lat && lng) {
+                                const m = L.marker([lat, lng], { 
+                                    icon: L.divIcon({
+                                        html: `<div style="background-color: #ef4444; width: 16px; height: 16px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 10px rgba(239, 68, 68, 0.8); display:flex; align-items:center; justify-content:center; color:white; font-size:8px;"><i class="fa-solid fa-triangle-exclamation"></i></div>`,
+                                        className: ''
+                                    })
+                                }).bindPopup(`<div style="text-align:center;"><b style="color:#ef4444;">TENTATIVE REFUSÉE</b><br>${log.adresse_email}<br>Score: ${log.score_confiance_ia}/100<br>Date: ${date}</div>`);
+                                riskLayer.addLayer(m);
+                            }
+                        }
+                    });
+                }
+            } catch (e) { console.error(e); }
+        }
+    </script>
+</body>
+
+</html>

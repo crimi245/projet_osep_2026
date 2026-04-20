@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <script src="/public/js/theme.js"></script>
+    <link rel="stylesheet" href="style-dashboard.css">
+    <style>
+        /* Styles spécifiques pour le Bento Grid "Master Stats" */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, minmax(150px, auto));
+            gap: 24px;
+        }
+
+        /* Cartes qui s'étendent (Spanning) */
+        .span-2-col {
+            grid-column: span 2;
+        }
+
+        .span-2-row {
+            grid-row: span 2;
+        }
+
+        .span-full {
+            grid-column: span 4;
+        }
+
+        /* Heatmap Grid Style */
+        .heatmap-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            /* 12 mois ou 12 heures */
+            gap: 4px;
+            margin-top: 15px;
+        }
+
+        .heat-box {
+            height: 30px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            transition: transform 0.2s;
+        }
+
+        .heat-box:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            border: 1px solid #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Niveaux d'intensité Heatmap */
+        .lvl-0 {
+            background: #f3f4f6;
+        }
+
+        .lvl-1 {
+            background: #dcfce7;
+        }
+
+        .lvl-2 {
+            background: #86efac;
+        }
+
+        .lvl-3 {
+            background: #22c55e;
+        }
+
+        .lvl-4 {
+            background: #0f3d2e;
+        }
+
+        /* Activity Log List */
+        .log-item {
+            display: flex;
+            gap: 15px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.85rem;
+        }
+
+        .log-time {
+            color: #9ca3af;
+            min-width: 50px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .log-content {
+            flex: 1;
+        }
+
+        .log-content strong {
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        /* Graphique Radar Container */
+        .radar-box {
+            height: 250px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+
+            <header class="top-bar">
+                <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()"><i
+                        class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <!-- L'icône de notification a été supprimée -->
+                    <div class="user-profile">
+                        <div>
+                            <h4 style="font-size: 0.9rem;">Admin</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Statistiques</p>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=AD&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Vue d'Ensemble Système</h1>
+                    <p>Agrégation de toutes les métriques de performance.</p>
+                </div>
+                <div class="header-btns">
+                    <select class="btn-light" style="border-radius: 30px; padding: 10px 20px;" id="statsPeriodSelect">
+                        <option value="7d">7 derniers jours</option>
+                        <option value="1m">Ce mois-ci</option>
+                        <option value="1y">Cette année</option>
+                    </select>
+                    <button class="btn-dark" id="btnGeneratePdf"><i class="fa-solid fa-file-pdf"></i> Rapport
+                        PDF</button>
+                </div>
+            </div>
+
+            <section class="bento-grid">
+                <!-- Row 1 -->
+                <div class="card card-green span-1">
+                    <div class="icon-circle"><i class="fa-regular fa-clock"></i></div>
+                    <p>Temps Total Réunions</p>
+                    <div class="kpi-num" id="kpiTotalTime">--</div>
+                    <div><span class="badge badge-green">+12%</span> vs N-1</div>
+                </div>
+
+                <div class="card span-2-col">
+                    <h3>Densité d'Occupation (Heatmap)</h3>
+                    <p style="font-size:0.8rem; color:#888; margin-bottom:10px;">Fréquence des réunions par heure (08h - 19h)</p>
+                    <div class="heatmap-container" id="heatmapGrid">
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888; margin-top:5px;">
+                        <span>08:00</span>
+                        <span>13:00</span>
+                        <span>19:00</span>
+                    </div>
+                </div>
+
+                <div class="card span-1">
+                    <h3>Appareils</h3>
+                    <div style="display:flex; align-items:center; justify-content:space-around; margin-top:20px;">
+                        <div style="text-align:center;">
+                            <i class="fa-solid fa-desktop" style="font-size:1.5rem; color:#0f3d2e;"></i>
+                            <div style="font-weight:bold; margin-top:5px;" id="deviceDesktopVal">--%</div>
+                        </div>
+                        <div style="text-align:center;">
+                            <i class="fa-solid fa-mobile-screen" style="font-size:1.5rem; color:#22c55e;"></i>
+                            <div style="font-weight:bold; margin-top:5px;" id="deviceMobileVal">--%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Row 2 & 3 -->
+                <div class="card span-2-col span-2-row">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                        <h3>Flux d'Activité Global</h3>
+                        <div style="display:flex; gap:10px;">
+                            <span style="font-size:0.8rem; color:#888;"><i class="fa-solid fa-circle" style="color:#0f3d2e"></i> Réunions</span>
+                            <span style="font-size:0.8rem; color:#888;"><i class="fa-solid fa-circle" style="color:#22c55e"></i> Connexions</span>
+                        </div>
+                    </div>
+                    <div style="flex:1; width:100%;">
+                        <canvas id="mainAreaChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card span-2-col span-2-row">
+                    <h3>Historique des Retouches</h3>
+                    <p style="font-size:0.8rem; color:#888; margin-bottom:15px;">Évolution sur 30 jours</p>
+                    <div style="height: 240px; width: 100%; position: relative;">
+                        <canvas id="modificationsTimelineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Row 4 & 5 -->
+                <div class="card span-1 span-2-row">
+                    <h3>Typologie Globale</h3>
+                    <div class="radar-box">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                    <div style="text-align:center; font-size:0.8rem; color:#666;">Vue d'ensemble radar</div>
+                </div>
+
+                <div class="card span-1 span-2-row">
+                    <h3>Catégories</h3>
+                    <p style="font-size:0.8rem; color:#888; margin-bottom:15px; text-align: center;">Répartition détaillée</p>
+                    <div style="height: 240px; display: flex; justify-content: center; align-items: center; width: 100%; position: relative;">
+                        <canvas id="meetingTypesChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card span-2-col span-2-row">
+                    <h3>Modifications</h3>
+                    <p style="font-size:0.8rem; color:#888; margin-bottom:15px; text-align: center;">Taux de retouche global</p>
+                    <div style="height: 240px; display: flex; justify-content: center; align-items: center; width: 100%; position: relative;">
+                        <canvas id="modificationsRateChart"></canvas>
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js?v=2"></script>
+        <!-- Theme JS moved to head -->
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                // Load Data
+                loadStats('7d');
+                loadAdvancedStats(); // NOUVEAU
+
+                // Handle Filter
+                document.getElementById('statsPeriodSelect').addEventListener('change', (e) => {
+                    loadStats(e.target.value);
+                });
+
+                // Generate PDF
+                document.getElementById('btnGeneratePdf').addEventListener('click', () => {
+                    window.location.href = '/api/reports/stats';
+                });
+            });
+
+            async function loadStats(period) {
+                try {
+                    const res = await fetch(`/api/stats/global?period=${period}`);
+                    if (!res.ok) throw new Error("API Error");
+                    const data = await res.json();
+
+                    // 1. KPIs
+                    document.getElementById('kpiTotalTime').innerText = data.totalHours + " h";
+                    document.getElementById('deviceDesktopVal').innerText = data.devices.desktop + "%";
+                    document.getElementById('deviceMobileVal').innerText = data.devices.mobile + "%";
+
+
+                    // 3. Charts (Basic Rendering if Chart.js is loaded)
+                    renderCharts(data);
+
+                } catch (e) {
+                    console.error("Stats Error", e);
+                }
+            }
+
+            let mainChart = null;
+            let radarChart = null;
+
+            function renderCharts(data) {
+                // Main Chart (Trends)
+                const ctxMain = document.getElementById('mainAreaChart');
+                if (ctxMain) {
+                    if (mainChart) mainChart.destroy();
+                    mainChart = new Chart(ctxMain, {
+                        type: 'line',
+                        data: {
+                            labels: data.trends.map(t => t.day),
+                            datasets: [{
+                                label: 'Réunions',
+                                data: data.trends.map(t => t.count),
+                                borderColor: '#0f3d2e',
+                                backgroundColor: 'rgba(15, 61, 46, 0.1)',
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                    });
+                }
+
+                // Radar
+                const ctxRadar = document.getElementById('radarChart');
+                if (ctxRadar) {
+                    if (radarChart) radarChart.destroy();
+                    radarChart = new Chart(ctxRadar, {
+                        type: 'radar',
+                        data: {
+                            labels: data.radar.map(r => r.name),
+                            datasets: [{
+                                label: 'Réunions',
+                                data: data.radar.map(r => r.count),
+                                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                                borderColor: '#22c55e'
+                            }]
+                        },
+                        options: { maintainAspectRatio: false }
+                    });
+                }
+
+                // Heatmap (Manual Grid)
+                const heatGrid = document.getElementById('heatmapGrid');
+                if (heatGrid) {
+                    heatGrid.innerHTML = '';
+                    // 12 hours map (8h to 19h)
+                    for (let h = 8; h <= 19; h++) {
+                        const count = data.heatmap[h] || 0;
+                        const lvl = count > 5 ? 'lvl-4' : count > 2 ? 'lvl-3' : count > 0 ? 'lvl-1' : 'lvl-0';
+                        heatGrid.innerHTML += `<div class="heat-box ${lvl}" title="${h}h: ${count} réunions"></div>`;
+                    }
+                }
+            }
+
+            let typeChart = null;
+            let rateChart = null;
+            let timeChart = null;
+
+            async function loadAdvancedStats() {
+                try {
+                    // 1. Types de réunions
+                    const typeRes = await fetch('/api/stats/meeting-types');
+                    if (typeRes.ok) {
+                        const types = await typeRes.json();
+                        const ctx1 = document.getElementById('meetingTypesChart').getContext('2d');
+                        if (typeChart) typeChart.destroy();
+                        typeChart = new Chart(ctx1, {
+                            type: 'doughnut',
+                            data: {
+                                labels: types.labels,
+                                datasets: [{
+                                    data: types.data,
+                                    backgroundColor: ['#0f3d2e', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6'],
+                                    borderWidth: 0
+                                }]
+                            },
+                            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
+                        });
+                    }
+
+                    // 2. Taux de modification
+                    const rateRes = await fetch('/api/stats/modifications-rate');
+                    if (rateRes.ok) {
+                        const rate = await rateRes.json();
+                        const ctx2 = document.getElementById('modificationsRateChart').getContext('2d');
+                        if (rateChart) rateChart.destroy();
+                        rateChart = new Chart(ctx2, {
+                            type: 'doughnut',
+                            data: {
+                                labels: rate.labels,
+                                datasets: [{
+                                    data: rate.data,
+                                    backgroundColor: ['#f59e0b', '#e5e7eb'],
+                                    borderWidth: 0
+                                }]
+                            },
+                            options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '70%'}
+                        });
+                    }
+
+                    // 3. Historique chronologique
+                    const timeRes = await fetch('/api/stats/modifications');
+                    if (timeRes.ok) {
+                        const time = await timeRes.json();
+                        const ctx3 = document.getElementById('modificationsTimelineChart').getContext('2d');
+                        if (timeChart) timeChart.destroy();
+                        timeChart = new Chart(ctx3, {
+                            type: 'line',
+                            data: {
+                                labels: time.labels,
+                                datasets: [{
+                                    label: 'Modifications',
+                                    data: time.data,
+                                    borderColor: '#f59e0b',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    fill: true,
+                                    tension: 0.4
+                                }]
+                            },
+                            options: { 
+                                maintainAspectRatio: false, 
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } 
+                            }
+                        });
+                    }
+                } catch (e) {
+                    console.error("Advanced stats error:", e);
+                }
+            }
+
+        </script>
+</body>
+
+</html>

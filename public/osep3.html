@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulaire de gestion de présence - Étape 1</title>
+    <link rel="stylesheet" href="/public/styles2.css">
+    <script src="/public/js/toast.js"></script>
+    <script src="/public/js/fingerprint.js"></script>
+</head>
+
+<body>
+    <header>
+        <img src="/public/logo.jpg" alt="Logo" id="logo">
+        <h2 style="text-align: center;" id="header">GESTION DE PRÉSENCE</h2>
+    </header>
+
+    <main style="padding: 20px;">
+
+        <h3 style="text-align: center;">SIGNATURE</h3>
+
+        <div class="signature-container">
+            <canvas id="signaturePad" width="300" height="200"></canvas>
+
+            <button onclick="clearSignature()" class="btn-clear">Effacer la signature</button>
+        </div>
+
+        <div class="btn-group">
+            <button onclick="goBack()" class="btn-green">Précédent</button>
+            <button onclick="saveAndSubmit()" class="btn-orange">Enregistrer</button>
+        </div>
+
+    </main>
+
+    <script>
+        // --- 1. CONFIGURATION DU DESSIN ---
+        const canvas = document.getElementById('signaturePad');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        // Configuration du trait (noir, arrondi)
+        ctx.lineWidth = 2;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000000';
+
+        // Fonction pour obtenir la position (souris ou tactile)
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            // Si c'est du tactile (mobile)
+            if (e.touches) {
+                return {
+                    x: e.touches[0].clientX - rect.left,
+                    y: e.touches[0].clientY - rect.top
+                };
+            }
+            // Si c'est la souris (PC)
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Commencer à dessiner
+        function startDraw(e) {
+            isDrawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            e.preventDefault(); // Empêche le scroll
+        }
+
+        // Dessiner en bougeant
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            e.preventDefault();
+        }
+
+        // Arrêter de dessiner
+        function stopDraw() {
+            isDrawing = false;
+        }
+
+        // Événements Souris (PC)
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseout', stopDraw);
+
+        // Événements Tactiles (Mobile)
+        canvas.addEventListener('touchstart', startDraw);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDraw);
+
+        // --- 2. BOUTONS ---
+
+        // Effacer
+        function clearSignature() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Précédent
+        function goBack() {
+            window.location.href = 'details';
+        }
+
+        // ENREGISTRER FINAL
+
+
+
+        async function saveAndSubmit() {
+
+
+            // 1. Récupération de la signature
+            const signatureImage = canvas.toDataURL();
+
+            // 2. Récupération de toutes les données des pages précédentes
+            let email = localStorage.getItem('userEmail') || localStorage.getItem('participant_email');
+            let nom = localStorage.getItem('userNom');
+            let prenom = localStorage.getItem('userPrenom');
+            let structure = localStorage.getItem('userStructure');
+
+            // Si l'utilisateur a été reconnu et a bypassé l'étape 2
+            if (!nom && localStorage.getItem('participant_nom')) {
+                const nomComplet = localStorage.getItem('participant_nom') || '';
+                const parts = nomComplet.split(' ');
+                prenom = parts[0] || '';
+                nom = parts.slice(1).join(' ') || nomComplet;
+
+                try {
+                    const detailsStr = localStorage.getItem('participant_details');
+                    if (detailsStr) {
+                        const details = JSON.parse(detailsStr);
+                        structure = details.departement || details.structure || 'OSEP';
+                    }
+                } catch (e) { }
+            }
+
+            const finalData = {
+                nom: nom,
+                prenom: prenom,
+                fonction: localStorage.getItem('userFonction') || '',
+                email: email,
+                structure: structure || 'OSEP',
+                telephone: localStorage.getItem('userTelephone') || '',
+                signature: signatureImage,
+                // AJOUT EDR
+                fingerprint: localStorage.getItem('osep_fingerprint'),
+                gps: null,
+                metadonnees: null
+            };
+
+            // Tenter une mise à jour EDR fraîche au moment de la signature
+            try {
+                const edrRes = await FingerprintOSEP.genererEmpreinte();
+                finalData.fingerprint = edrRes.hash;
+                finalData.metadonnees = edrRes.metadonnees;
+
+                const gpsRes = await FingerprintOSEP.obtenirPosition();
+                if (gpsRes.succes) {
+                    finalData.gps = { lat: gpsRes.lat, lng: gpsRes.lng, precision: gpsRes.precision };
+                }
+            } catch (edrErr) {
+                console.warn("Échec collecte EDR (Signature) :", edrErr);
+            }
+
+            console.log("Données complètes :", finalData);
+
+            // 3. Vérification de base
+            if (!finalData.nom || !finalData.email || !finalData.signature) {
+                toast.warning("Des informations sont manquantes. Merci de recommencer.");
+                return;
+            }
+
+            const pathParts = window.location.pathname.split('/');
+            const uuid = pathParts[2]; // /m/:uuid/sign (step 3)
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const dynamicToken = urlParams.get('t') || localStorage.getItem('osep_dynamic_token');
+            const sessionToken = localStorage.getItem('osep_session_token');
+
+            finalData.t = dynamicToken; // Ajout du jeton QR pour validation EDR
+
+            try {
+                // 4. Envoi au serveur
+                const response = await fetch(`/api/submit/${uuid}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-osep-session': sessionToken // Ajout de la session Zero Trust
+                    },
+                    body: JSON.stringify(finalData)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    // 5. Succès - Modification pour afficher le message de félicitations
+                    toast.success("Enregistrement réussi !");
+                    localStorage.clear();
+
+                    // Masquer le contenu principal et afficher les félicitations
+                    document.querySelector('main').innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; animation: scaleIn 0.5s ease-out;">
+                            <div style="width: 100px; height: 100px; background: #f0fdf4; color: #00A650; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 3rem; margin: 0 auto 30px auto; box-shadow: 0 4px 15px rgba(0, 166, 80, 0.2);">
+                                <i class="fa-solid fa-check"></i>
+                            </div>
+                            <h2 style="font-size: 2rem; color: #00A650; margin-bottom: 15px;">Félicitations !</h2>
+                            <p style="font-size: 1.1rem; color: #4b5563; line-height: 1.6; margin-bottom: 30px;">
+                                Votre enregistrement pour cette réunion a été effectué avec succès. 
+                                <br><br>
+                                Merci de votre participation !
+                            </p>
+                            <div style="padding: 20px; background: #f9fafb; border-radius: 12px; border: 1px solid #eee;">
+                                <p style="font-size: 0.9rem; color: #6b7280; margin: 0;">Vous pouvez maintenant fermer cette fenêtre.</p>
+                            </div>
+                        </div>
+                        <style>
+                            @keyframes scaleIn {
+                                from { transform: scale(0.9); opacity: 0; }
+                                to { transform: scale(1); opacity: 1; }
+                            }
+                        </style>
+                        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    `;
+
+                    // On ne redirige plus, l'utilisateur reste sur ce message
+                } else {
+                    if (result.error === 'Vous êtes déjà enregistré pour cette réunion.') {
+                        // Redirection vers la page d'erreur dédiée
+                        window.location.href = `/already-registered?nom=${encodeURIComponent(finalData.nom)}&prenom=${encodeURIComponent(finalData.prenom)}`;
+                        return;
+                    }
+                    // 6. Autre erreur côté serveur
+                    toast.error("Erreur lors de l'enregistrement : " + result.error);
+                }
+
+            } catch (error) {
+                console.error('Erreur réseau :', error);
+                toast.error("Une erreur est survenue lors de la communication avec le serveur.");
+            }
+        }
+
+    </script>
+</body>
+
+</html>

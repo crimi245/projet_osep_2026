@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enregistrement des Participants — OSEP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #fafafa;
+            --bg-card: #ffffff;
+            --fg: #1a1a1a;
+            --fg-secondary: #4a4a4a;
+            --muted: #8a8a8a;
+            --border: #e5e5e5;
+            --border-focus: #d4d4d4;
+            --input-bg: #f8f8f8;
+            --success: #16a34a;
+            --error: #dc2626;
+
+            /* Thème vert (par défaut) */
+            --accent: #059669;
+            --accent-light: #d1fae5;
+            --accent-dark: #047857;
+            --accent-glow: rgba(5, 150, 105, 0.15);
+
+            /* Thème orange */
+            --accent-orange: #ea580c;
+            --accent-orange-light: #ffedd5;
+            --accent-orange-dark: #c2410c;
+            --accent-orange-glow: rgba(234, 88, 12, 0.15);
+        }
+
+        [data-theme="orange"] {
+            --accent: #ea580c;
+            --accent-light: #ffedd5;
+            --accent-dark: #c2410c;
+            --accent-glow: rgba(234, 88, 12, 0.15);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Manrope', sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 2rem 1rem;
+            transition: background 0.4s ease;
+        }
+
+        h1, h2, h3 { font-family: 'Outfit', sans-serif; }
+
+        /* Motif d'arrière-plan */
+        .bg-pattern { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .bg-gradient {
+            position: absolute; inset: 0;
+            background: linear-gradient(135deg, var(--accent-glow) 0%, transparent 40%, transparent 60%, var(--accent-glow) 100%);
+            opacity: 0.5; transition: background 0.5s ease;
+        }
+        .bg-dots {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(var(--border) 1px, transparent 1px);
+            background-size: 32px 32px;
+        }
+
+        /* Conteneur principal */
+        .main-container { position: relative; z-index: 1; width: 100%; max-width: 520px; }
+
+        /* Form card */
+        .form-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 6px 16px rgba(0,0,0,0.04);
+            position: relative;
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: cardSlide 0.6s ease forwards;
+        }
+        @keyframes cardSlide { to { opacity: 1; transform: translateY(0); } }
+
+        .form-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+            transition: background 0.4s ease;
+        }
+
+        /* En-tête */
+        .form-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .form-header h1 { font-size: 1.5rem; font-weight: 600; color: var(--fg); margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+        .form-header p { font-size: 0.9rem; color: var(--muted); font-weight: 400; }
+
+        /* Steps */
+        .step { display: none; }
+        .step.active { display: block; }
+
+        /* Indicateur d'étapes */
+        .steps-indicator {
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; margin-bottom: 1.5rem;
+        }
+        .step-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--border); transition: all 0.3s ease;
+        }
+        .step-dot.active { background: var(--accent); transform: scale(1.4); }
+        .step-dot.done { background: var(--success); }
+
+        /* Groupe de saisie */
+        .form-body { display: flex; flex-direction: column; gap: 1.5rem; }
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+        @media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+
+        .input-group { position: relative; }
+        .input-group label {
+            display: block; font-size: 0.8rem; font-weight: 600;
+            color: var(--fg-secondary); margin-bottom: 0.5rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .input-wrapper { position: relative; }
+        .input-wrapper input {
+            width: 100%; padding: 0.9rem 1rem; padding-right: 2.5rem;
+            background: var(--input-bg); border: 1.5px solid var(--border);
+            border-radius: 10px; color: var(--fg);
+            font-family: 'Manrope', sans-serif; font-size: 0.95rem;
+            font-weight: 500; transition: all 0.25s ease; outline: none;
+        }
+        .input-wrapper input::placeholder { color: var(--muted); font-weight: 400; }
+        .input-wrapper input:hover { border-color: var(--border-focus); }
+        .input-wrapper input:focus { border-color: var(--accent); background: var(--bg-card); box-shadow: 0 0 0 4px var(--accent-glow); }
+        .input-wrapper input:disabled { opacity: 0.6; cursor: not-allowed; }
+        .input-wrapper input[readonly] { background: #f3f4f6; border-color: var(--border); cursor: default; color: var(--fg-secondary); }
+
+        /* Indicateur de validation */
+        .validation-icon {
+            position: absolute; right: 0.875rem; top: 50%;
+            transform: translateY(-50%) scale(0);
+            width: 18px; height: 18px; color: var(--success);
+            opacity: 0; transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .validation-icon.show { transform: translateY(-50%) scale(1); opacity: 1; }
+        .required { color: var(--accent); margin-left: 2px; }
+
+        /* Badge participant connu */
+        .known-badge {
+            display: flex; align-items: center; gap: 10px;
+            padding: 12px 16px;
+            background: var(--accent-light);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+        .known-badge-icon { font-size: 1.5rem; }
+        .known-badge-text strong { display: block; font-size: 0.95rem; color: var(--accent-dark); font-weight: 700; }
+        .known-badge-text span { font-size: 0.8rem; color: var(--accent); font-weight: 500; }
+
+        /* Canvas signature */
+        .signature-area {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fdfdfd;
+            position: relative;
+            cursor: crosshair;
+            transition: border-color 0.2s;
+        }
+        .signature-area:hover { border-color: var(--accent); }
+        .signature-area.has-sig { border-color: var(--accent); border-style: solid; }
+
+        #signatureCanvas {
+            width: 100%;
+            height: 180px;
+            touch-action: none;
+            display: block;
+        }
+        .sig-hint {
+            position: absolute; top:50%; left:50%;
+            transform: translate(-50%,-50%);
+            color: #ccc; font-size: 0.85rem; pointer-events: none;
+            transition: opacity 0.2s;
+            text-align: center;
+        }
+
+        .sig-toolbar {
+            display: flex; justify-content: flex-end;
+            padding: 8px 12px;
+            border-top: 1px solid var(--border);
+            background: var(--bg);
+        }
+        .btn-clear-sig {
+            background: none; border: 1px solid var(--border);
+            border-radius: 6px; padding: 4px 12px;
+            font-size: 0.8rem; cursor: pointer; color: var(--muted);
+            transition: all 0.2s;
+        }
+        .btn-clear-sig:hover { border-color: var(--error); color: var(--error); }
+
+        /* Submit section */
+        .submit-section { margin-top: 0.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border); }
+
+        .submit-btn {
+            width: 100%; padding: 1rem 2rem;
+            background: var(--accent); border: none; border-radius: 10px;
+            color: white; font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem; font-weight: 600; letter-spacing: 0.01em;
+            cursor: pointer; position: relative; overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .submit-btn:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-glow); }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .btn-content { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-icon { width: 18px; height: 18px; transition: transform 0.25s ease; }
+        .submit-btn:hover .btn-icon { transform: translateX(3px); }
+
+        /* Spinner */
+        .spinner {
+            display: none; width: 20px; height: 20px;
+            border: 2px solid rgba(255,255,255,0.3); border-top-color: white;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        .submit-btn.loading .spinner { display: block; }
+        .submit-btn.loading .btn-text { display: none; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Success Overlay */
+        .success-overlay {
+            position: absolute; inset: 0; background: var(--bg-card);
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; padding: 2rem; text-align: center;
+            opacity: 0; visibility: hidden; transition: all 0.4s ease; border-radius: 20px;
+        }
+        .success-overlay.show { opacity: 1; visibility: visible; }
+        .success-icon-container {
+            width: 72px; height: 72px; background: var(--accent-light);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin-bottom: 1.25rem; transform: scale(0);
+            transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+        }
+        .success-overlay.show .success-icon-container { transform: scale(1); transition-delay: 0.1s; }
+        .success-icon-container svg { width: 36px; height: 36px; color: var(--accent); }
+        .success-overlay h2 { font-size: 1.35rem; font-weight: 600; color: var(--fg); margin-bottom: 0.5rem; opacity:0; transform:translateY(10px); transition: all 0.4s ease; }
+        .success-overlay.show h2 { opacity:1; transform:translateY(0); transition-delay: 0.2s; }
+        .success-overlay p { font-size: 0.9rem; color: var(--muted); margin-bottom: 1.5rem; opacity:0; transform:translateY(10px); transition: all 0.4s ease; }
+        .success-overlay.show p { opacity:1; transform:translateY(0); transition-delay: 0.3s; }
+
+        /* Pied de page */
+        .form-footer { margin-top: 1.5rem; text-align: center; }
+        .form-footer p { font-size: 0.8rem; color: var(--muted); }
+
+        /* Error message */
+        .error-msg {
+            background: #fef2f2; border: 1px solid #fecaca;
+            border-radius: 8px; padding: 10px 14px;
+            font-size: 0.85rem; color: var(--error);
+            display: none; margin-top: 0.5rem;
+        }
+        .error-msg.show { display: block; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+        @media (max-width: 480px) {
+            .form-card { padding: 1.75rem 1.5rem; border-radius: 16px; }
+            .form-header h1 { font-size: 1.375rem; }
+        }
+    </style>
+    <script src="/public/js/fingerprint.js"></script>
+</head>
+
+<body>
+    <!-- Background -->
+    <div class="bg-pattern">
+        <div class="bg-gradient"></div>
+        <div class="bg-dots"></div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-container">
+        <div class="form-card">
+
+            <!-- En-tête commun -->
+            <header class="form-header">
+                <h1 id="headerTitle">Enregistrement Participant</h1>
+                <p id="headerDesc">Chargement de la réunion...</p>
+            </header>
+
+            <!-- Indicateur d'étapes -->
+            <div class="steps-indicator">
+                <div class="step-dot active" id="dot1"></div>
+                <div class="step-dot" id="dot2"></div>
+                <div class="step-dot" id="dot3"></div>
+            </div>
+
+            <!-- ========================================
+                 STEP 1 — Saisie de l'email
+            ======================================== -->
+            <div class="step active" id="step1">
+                <div class="form-body">
+                    <div class="input-group">
+                        <label for="emailInput">Adresse Gmail <span class="required">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="email" id="emailInput" placeholder="exemple@gmail.com"
+                                autocomplete="email" required>
+                            <svg class="validation-icon" id="emailIcon" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <div class="error-msg" id="emailError">Veuillez entrer une adresse email valide.</div>
+                    </div>
+
+                    <div class="submit-section" style="margin-top:0; padding-top:1rem; border-top:none;">
+                        <button type="button" class="submit-btn" id="btnCheckEmail">
+                            <div class="spinner"></div>
+                            <span class="btn-content btn-text">
+                                Continuer
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================
+                 STEP 2 — Formulaire complet (email inconnu)
+            ======================================== -->
+            <div class="step" id="step2">
+                <form id="registrationForm" class="form-body">
+                    <!-- Email grissé (lecture seule) -->
+                    <div class="input-group">
+                        <label for="emailDisplay">Adresse Gmail</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="emailDisplay" readonly>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label for="prenom">Prénom <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="prenom" name="prenom"
+                                    placeholder="Votre prénom" required autocomplete="given-name" minlength="2">
+                                <svg class="validation-icon" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label for="nom">Nom <span class="required">*</span></label>
+                            <div class="input-wrapper">
+                                <input type="text" id="nom" name="nom"
+                                    placeholder="Votre nom" required autocomplete="family-name" minlength="2">
+                                <svg class="validation-icon" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="20 6 9 17 4 12"></polyline>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="fonction">Fonction</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="fonction" name="fonction"
+                                placeholder="Ex: Chef de projet, Consultant...">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="structure">Structure / Service</label>
+                        <div class="input-wrapper">
+                            <input type="text" id="structure" name="structure"
+                                placeholder="Ex: OSEP, CCRPMR...">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="telephone">Téléphone</label>
+                        <div class="input-wrapper">
+                            <input type="tel" id="telephone" name="telephone"
+                                placeholder="+225 07 XX XX XX XX">
+                        </div>
+                    </div>
+
+                    <!-- Section Signature -->
+                    <div class="input-group">
+                        <label>Signature <span class="required">*</span></label>
+                        <div class="signature-area" id="sigAreaFull">
+                            <canvas id="signatureCanvasFull" height="180"></canvas>
+                            <div class="sig-hint" id="sigHintFull">✍️ Signez ici avec votre doigt ou souris</div>
+                        </div>
+                        <div class="sig-toolbar">
+                            <button type="button" class="btn-clear-sig" onclick="clearSig('full')">Effacer</button>
+                        </div>
+                    </div>
+
+                    <div class="submit-section">
+                        <button type="submit" class="submit-btn" id="submitBtnFull">
+                            <div class="spinner"></div>
+                            <span class="btn-content btn-text">
+                                Valider ma participation
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ========================================
+                 STEP 3 — Page Signature (participant connu)
+            ======================================== -->
+            <div class="step" id="step3">
+                <div class="form-body">
+                    <!-- Badge participant connu -->
+                    <div class="known-badge" id="knownBadge">
+                        <span class="known-badge-icon">👋</span>
+                        <div class="known-badge-text">
+                            <strong id="knownName">Chargement...</strong>
+                            <span id="knownInfo">Participant reconnu</span>
+                        </div>
+                    </div>
+
+                    <!-- Email affiché (grissé) -->
+                    <div class="input-group">
+                        <label>Adresse Gmail</label>
+                        <div class="input-wrapper">
+                            <input type="email" id="emailDisplayKnown" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Canvas de signature -->
+                    <div class="input-group">
+                        <label>Signature <span class="required">*</span></label>
+                        <div class="signature-area" id="sigAreaKnown">
+                            <canvas id="signatureCanvasKnown" height="200"></canvas>
+                            <div class="sig-hint" id="sigHintKnown">✍️ Apposez votre signature pour confirmer votre présence</div>
+                        </div>
+                        <div class="sig-toolbar">
+                            <button type="button" class="btn-clear-sig" onclick="clearSig('known')">Effacer</button>
+                        </div>
+                    </div>
+
+                    <div class="error-msg" id="sigError">Veuillez apposer votre signature avant de valider.</div>
+
+                    <div class="submit-section" style="margin-top:0; padding-top:1rem;">
+                        <button type="button" class="submit-btn" id="btnSubmitSignature">
+                            <div class="spinner"></div>
+                            <span class="btn-content btn-text">
+                                Confirmer ma présence
+                                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================
+                 SUCCESS OVERLAY
+            ======================================== -->
+            <div class="success-overlay" id="successOverlay">
+                <div class="success-icon-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                </div>
+                <h2>Présence confirmée !</h2>
+                <p>Votre participation a été enregistrée avec succès. Vous pouvez maintenant fermer cette page.</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="form-footer">
+            <p>Les champs marqués d'un astérisque sont obligatoires</p>
+        </div>
+    </main>
+
+    <script>
+        // ============================================================
+        // ÉTAT GLOBAL
+        // ============================================================
+        let uuid = null;
+        let currentEmail = '';
+        let knownParticipant = null; // données si participant connu
+        let sigCtxFull = null;
+        let sigCtxKnown = null;
+        let isDrawingFull = false;
+        let isDrawingKnown = false;
+        let hasSignatureFull = false;
+        let hasSignatureKnown = false;
+
+        // Extraire UUID depuis l'URL
+        const urlParams = new URLSearchParams(window.location.search);
+        uuid = urlParams.get('uuid') || window.location.pathname.split('/').pop();
+
+        // ============================================================
+        // INITIALISATION AU CHARGEMENT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (!uuid || !uuidRegex.test(uuid)) {
+                document.getElementById('headerTitle').textContent = 'Lien invalide';
+                document.getElementById('headerDesc').textContent = 'Utilisez un lien QR ou une invitation valide.';
+                document.getElementById('step1').innerHTML = '<p style="text-align:center;color:var(--error);padding:20px;">Lien de participation invalide.</p>';
+                return;
+            }
+
+            // Charger les infos de la réunion
+            try {
+                const res = await fetch(`/api/public/meetings/${uuid}/status`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.isFinished) {
+                        window.location.href = `/reunion-terminee.html?uuid=${uuid}`;
+                        return;
+                    }
+                    document.getElementById('headerTitle').textContent = data.title || 'Enregistrement Participant';
+                    const dateStr = new Date(data.startTime).toLocaleDateString('fr-FR', {
+                        weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+                    });
+                    document.getElementById('headerDesc').textContent = `Réunion du ${dateStr}`;
+
+                    // Thème
+                    const theme = data.theme || 'green';
+                    document.documentElement.setAttribute('data-theme', theme === 'orange' ? 'orange' : 'green');
+                } else {
+                    document.getElementById('headerTitle').textContent = 'Réunion introuvable';
+                    document.getElementById('headerDesc').textContent = '';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+
+            // Initialiser les canvas de signature
+            initSignatureCanvas('full');
+            initSignatureCanvas('known');
+
+            // Listener email Step 1
+            const emailInput = document.getElementById('emailInput');
+            emailInput.addEventListener('input', () => validateEmailInput());
+
+            // Listener bouton vérif email
+            document.getElementById('btnCheckEmail').addEventListener('click', handleEmailCheck);
+            emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleEmailCheck(); });
+
+            // Listener formulaire complet Step 2
+            document.getElementById('registrationForm').addEventListener('submit', handleFullFormSubmit);
+
+            // Listener bouton signature Step 3
+            document.getElementById('btnSubmitSignature').addEventListener('click', handleSignatureSubmit);
+        });
+
+        // ============================================================
+        // STEP 1 — VÉRIFICATION EMAIL
+        // ============================================================
+        function validateEmailInput() {
+            const val = document.getElementById('emailInput').value;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const icon = document.getElementById('emailIcon');
+            const isValid = emailRegex.test(val);
+            if (isValid) { icon.classList.add('show'); document.getElementById('emailInput').style.borderColor = 'var(--success)'; }
+            else { icon.classList.remove('show'); document.getElementById('emailInput').style.borderColor = ''; }
+            return isValid;
+        }
+
+        async function handleEmailCheck() {
+            const email = document.getElementById('emailInput').value.trim();
+            if (!validateEmailInput()) {
+                document.getElementById('emailError').classList.add('show');
+                return;
+            }
+            document.getElementById('emailError').classList.remove('show');
+            currentEmail = email;
+
+            const btn = document.getElementById('btnCheckEmail');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`/api/public/participant-info/${uuid}?email=${encodeURIComponent(email)}`);
+                const data = await res.json();
+
+                if (data.alreadyRegistered) {
+                    // Déjà inscrit à cette réunion
+                    window.location.href = `/already-registered?nom=${encodeURIComponent(data.participant?.nom_complet || email)}`;
+                    return;
+                }
+
+                if (data.found && data.participant) {
+                    // Participant connu → Step 3 (signature directe)
+                    knownParticipant = data.participant;
+                    goToStep3();
+                } else {
+                    // Email inconnu → Step 2 (formulaire complet)
+                    goToStep2();
+                }
+            } catch (e) {
+                console.error(e);
+                // En cas d'erreur réseau, on continue vers le formulaire complet
+                goToStep2();
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // ============================================================
+        // NAVIGATION ENTRE LES STEPS
+        // ============================================================
+        function goToStep2() {
+            setStep(2);
+            document.getElementById('emailDisplay').value = currentEmail;
+            // Focus premier champ
+            setTimeout(() => document.getElementById('prenom').focus(), 100);
+        }
+
+        function goToStep3() {
+            setStep(3);
+            const p = knownParticipant;
+            document.getElementById('emailDisplayKnown').value = p.email;
+            document.getElementById('knownName').textContent = p.nom_complet || `${p.prenom} ${p.nom}`;
+            document.getElementById('knownInfo').textContent =
+                [p.fonction, p.structure].filter(Boolean).join(' • ') || 'Participant reconnu';
+            // Re-init canvas known au cas où
+            setTimeout(() => resizeCanvas('known'), 100);
+        }
+
+        function setStep(n) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${n}`).classList.add('active');
+
+            const dots = document.querySelectorAll('.step-dot');
+            dots.forEach((d, i) => {
+                d.classList.remove('active', 'done');
+                if (i + 1 < n) d.classList.add('done');
+                else if (i + 1 === n) d.classList.add('active');
+            });
+        }
+
+        // ============================================================
+        // STEP 2 — SOUMISSION FORMULAIRE COMPLET
+        // ============================================================
+        async function handleFullFormSubmit(e) {
+            e.preventDefault();
+            const form = e.target;
+
+            if (!hasSignatureFull) {
+                alert('Veuillez apposer votre signature avant de valider.');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtnFull');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const canvas = document.getElementById('signatureCanvasFull');
+            const signatureData = canvas.toDataURL('image/png');
+
+            const data = {
+                email: currentEmail,
+                prenom: document.getElementById('prenom').value.trim(),
+                nom: document.getElementById('nom').value.trim(),
+                fonction: document.getElementById('fonction').value.trim(),
+                structure: document.getElementById('structure').value.trim(),
+                telephone: document.getElementById('telephone').value.trim(),
+                signature: signatureData
+            };
+
+            await submitParticipation(data, btn);
+        }
+
+        // ============================================================
+        // STEP 3 — SOUMISSION SIGNATURE (participant connu)
+        // ============================================================
+        async function handleSignatureSubmit() {
+            const canvas = document.getElementById('signatureCanvasKnown');
+            if (!hasSignatureKnown) {
+                document.getElementById('sigError').classList.add('show');
+                return;
+            }
+            document.getElementById('sigError').classList.remove('show');
+
+            const btn = document.getElementById('btnSubmitSignature');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            const signatureData = canvas.toDataURL('image/png');
+            const p = knownParticipant;
+
+            const data = {
+                email: p.email,
+                prenom: p.prenom,
+                nom: p.nom,
+                fonction: p.fonction || '',
+                structure: p.structure || '',
+                telephone: p.telephone || '',
+                signature: signatureData
+            };
+
+            await submitParticipation(data, btn);
+        }
+
+        // ============================================================
+        // SOUMISSION COMMUNE
+        // ============================================================
+        async function submitParticipation(data, btn) {
+            // Collecte EDR
+            try {
+                const edrRes = await FingerprintOSEP.genererEmpreinte();
+                data.fingerprint = edrRes.hash;
+                data.metadonnees = edrRes.metadonnees;
+
+                const gpsRes = await FingerprintOSEP.obtenirPosition();
+                if (gpsRes.succes) {
+                    data.gps = { lat: gpsRes.lat, lng: gpsRes.lng, precision: gpsRes.precision };
+                }
+
+                const uP = new URLSearchParams(window.location.search);
+                if (uP.get('t')) data.t = uP.get('t');
+            } catch (edrErr) {
+                console.warn('Échec EDR:', edrErr);
+            }
+
+            try {
+                const res = await fetch(`/api/submit/${uuid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    btn.classList.remove('loading');
+                    document.getElementById('successOverlay').classList.add('show');
+                } else {
+                    const errData = await res.json();
+                    if (errData.error === 'Vous êtes déjà enregistré pour cette réunion.') {
+                        window.location.href = `/already-registered?nom=${encodeURIComponent(data.nom)}&prenom=${encodeURIComponent(data.prenom)}`;
+                        return;
+                    }
+                    throw new Error(errData.error || 'Erreur lors de l\'enregistrement');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Une erreur est survenue: ' + err.message);
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // ============================================================
+        // CANVAS DE SIGNATURE
+        // ============================================================
+        function initSignatureCanvas(type) {
+            const canvasId = type === 'full' ? 'signatureCanvasFull' : 'signatureCanvasKnown';
+            const areaId   = type === 'full' ? 'sigAreaFull' : 'sigAreaKnown';
+            const hintId   = type === 'full' ? 'sigHintFull' : 'sigHintKnown';
+            const canvas   = document.getElementById(canvasId);
+            const ctx      = canvas.getContext('2d');
+
+            if (type === 'full') sigCtxFull = ctx;
+            else sigCtxKnown = ctx;
+
+            resizeCanvas(type);
+
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            let drawing = false;
+            let lastX = 0, lastY = 0;
+
+            const getPos = (e) => {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                if (e.touches) {
+                    return { x: (e.touches[0].clientX - rect.left) * scaleX, y: (e.touches[0].clientY - rect.top) * scaleY };
+                }
+                return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+            };
+
+            const startDraw = (e) => {
+                e.preventDefault();
+                drawing = true;
+                const pos = getPos(e);
+                lastX = pos.x; lastY = pos.y;
+                document.getElementById(hintId).style.display = 'none';
+            };
+
+            const draw = (e) => {
+                if (!drawing) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                lastX = pos.x; lastY = pos.y;
+                if (type === 'full') { hasSignatureFull = true; }
+                else { hasSignatureKnown = true; }
+                document.getElementById(areaId).classList.add('has-sig');
+            };
+
+            const endDraw = () => { drawing = false; };
+
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mouseleave', endDraw);
+            canvas.addEventListener('touchstart', startDraw, { passive: false });
+            canvas.addEventListener('touchmove', draw, { passive: false });
+            canvas.addEventListener('touchend', endDraw);
+        }
+
+        function resizeCanvas(type) {
+            const canvasId = type === 'full' ? 'signatureCanvasFull' : 'signatureCanvasKnown';
+            const canvas = document.getElementById(canvasId);
+            const container = canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width || 460;
+        }
+
+        function clearSig(type) {
+            if (type === 'full') {
+                const canvas = document.getElementById('signatureCanvasFull');
+                sigCtxFull.clearRect(0, 0, canvas.width, canvas.height);
+                hasSignatureFull = false;
+                document.getElementById('sigHintFull').style.display = 'block';
+                document.getElementById('sigAreaFull').classList.remove('has-sig');
+            } else {
+                const canvas = document.getElementById('signatureCanvasKnown');
+                sigCtxKnown.clearRect(0, 0, canvas.width, canvas.height);
+                hasSignatureKnown = false;
+                document.getElementById('sigHintKnown').style.display = 'block';
+                document.getElementById('sigAreaKnown').classList.remove('has-sig');
+                document.getElementById('sigError').classList.remove('show');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            resizeCanvas('full');
+            resizeCanvas('known');
+        });
+    </script>
+</body>
+
+</html>

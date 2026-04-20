@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mon Calendrier - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Design System OSEP -->
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+
+    <style>
+        /* Layout Grid */
+        .calendar-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .agenda-bottom-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            width: 100%;
+        }
+
+        /* Calendar Specific Styles (Scoped) */
+        .calendar-wrapper {
+            background: var(--bg-panel, white);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .month-year {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .cal-nav-btn {
+            background: transparent;
+            border: 1px solid var(--border-color, #eee);
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            outline: none;
+        }
+
+        .cal-nav-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .btn-light {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            font-weight: 500;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            outline: none;
+        }
+
+        .btn-light:hover {
+            background: #e5e7eb;
+        }
+
+        /* --- FULLCALENDAR PREMIUM OVERRIDES --- */
+        #calendar {
+            background: transparent !important;
+            border: none !important;
+            font-family: 'Inter', sans-serif;
+            margin-top: 15px;
+        }
+
+        .fc-theme-standard .fc-scrollgrid {
+            border: none !important;
+        }
+
+        .fc-theme-standard td,
+        .fc-theme-standard th {
+            border: 1px solid var(--border-color, #eee) !important;
+        }
+
+        .fc-scrollgrid-sync-table {
+            border-collapse: separate !important;
+            border-spacing: 6px !important;
+        }
+
+        .fc-scrollgrid-sync-table .fc-daygrid-day {
+            border: 1px solid var(--border-color, #eee) !important;
+            border-radius: 12px;
+            overflow: hidden;
+            background: var(--bg-body, #fafafa);
+            transition: box-shadow 0.2s, border-color 0.2s;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        .fc-scrollgrid-sync-table .fc-daygrid-day:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border-color: var(--primary) !important;
+        }
+
+        .fc .fc-daygrid-day.fc-day-today {
+            background: color-mix(in srgb, var(--primary), white 95%) !important;
+            border-color: var(--primary) !important;
+        }
+
+        .fc-daygrid-day-top {
+            display: flex;
+            justify-content: center;
+            padding: 5px 0 2px 0;
+        }
+
+        .fc-daygrid-day-number {
+            font-weight: 600 !important;
+            font-size: 0.9rem !important;
+            color: var(--text-main);
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            text-decoration: none !important;
+        }
+
+        .fc-day-today .fc-daygrid-day-number {
+            background: var(--primary);
+            color: white !important;
+        }
+
+        .fc-col-header-cell {
+            padding: 10px 0 !important;
+            font-weight: 600 !important;
+            color: var(--text-muted);
+            border: none !important;
+            font-size: 0.95rem;
+            text-transform: capitalize;
+        }
+
+        .fc-event {
+            border: none !important;
+            padding: 3px 6px !important;
+            border-radius: 6px !important;
+            font-size: 0.75rem !important;
+            font-weight: 500 !important;
+            margin: 2px 4px !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: transform 0.1s;
+        }
+
+        .fc-event:hover {
+            transform: scale(1.02);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Side Agenda */
+        .agenda-sidebar {
+            background: var(--bg-panel, white);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            height: fit-content;
+        }
+
+        .agenda-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .agenda-item {
+            padding: 12px;
+            border-radius: 12px;
+            background: var(--bg-body, #f9fafb);
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color, #eee);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .agenda-item:hover {
+            background: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .time-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Modale */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-card {
+            background: var(--bg-panel, white);
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        @media (max-width: 1000px) {
+            .agenda-bottom-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <!-- Top Bar -->
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="profileName">...</h4>
+                        </div>
+                        <img id="profileImg" src="">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Page Header -->
+            <div class="page-header" style="margin-bottom:20px;">
+                <div>
+                    <h1>Mon Calendrier</h1>
+                    <p>Planifiez et consultez vos réunions</p>
+                </div>
+                <div class="header-btns">
+                    <a href="/new-meeting" class="btn-dark">
+                        <i class="fa-solid fa-plus"></i>Nouvelle Réunion
+                    </a>
+                </div>
+            </div>
+
+            <div class="calendar-layout">
+                <!-- Calendar Component -->
+                <div class="calendar-wrapper">
+                    <div class="calendar-header">
+                        <div>
+                            <button class="cal-nav-btn" id="prevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button class="cal-nav-btn" id="nextMonth"><i
+                                    class="fa-solid fa-chevron-right"></i></button>
+                            <button class="btn-light" id="todayBtn"
+                                style="margin-left:10px; padding:8px 15px; font-size:0.85rem;">Aujourd'hui</button>
+                        </div>
+                        <div class="month-year" id="monthDisplay">Janvier 2026</div>
+                    </div>
+
+                    <!-- Le calendrier interactif sera généré ici -->
+                    <div id="calendar" style="min-height: 500px;"></div>
+                </div>
+
+                <!-- Bottom Agenda -->
+                <div class="agenda-bottom-wrapper">
+                    <div class="agenda-sidebar">
+                        <h3 class="agenda-title">Agenda du jour</h3>
+                        <div id="todayAgendaList">
+                            <p style="color:#999; font-size:0.9rem;">Aucune réunion aujourd'hui.</p>
+                        </div>
+                    </div>
+
+                    <div class="agenda-sidebar">
+                        <h3 class="agenda-title">Prochainement</h3>
+                        <div id="upcomingAgendaList">
+                            <p style="color:#999; font-size:0.9rem;">Rien de prévu.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Event Modal -->
+        <div class="modal-overlay" id="eventModal">
+            <div class="modal-card">
+                <div style="display:flex; justify-content:space-between; align-items:start; margin-bottom:15px;">
+                    <h3 id="modalTitle" style="font-family:'Space Grotesk'; font-size:1.4rem; margin:0;">Titre</h3>
+                    <button onclick="closeModal()"
+                        style="border:none; background:none; font-size:1.2rem; cursor:pointer;">&times;</button>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <p style="margin-bottom:8px; color:var(--text-muted); font-size:0.9rem;">
+                        <i class="fa-regular fa-clock" style="width:20px;"></i> <span id="modalTime">10:00 -
+                            11:00</span>
+                    </p>
+                    <p style="margin-bottom:8px; color:var(--text-muted); font-size:0.9rem;">
+                        <i class="fa-solid fa-location-dot" style="width:20px;"></i> <span id="modalLocation">Salle
+                            A</span>
+                    </p>
+                    <p style="margin-bottom:8px; display:none;" id="modalTypeContainer">
+                        <span id="modalTypeBadge" class="badge">Intra</span>
+                    </p>
+                </div>
+
+                <div
+                    style="display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #eee; padding-top:15px;">
+                    <a href="#" id="modalLink" target="_blank" class="btn-dark"
+                        style="text-decoration:none; font-size:0.9rem;">
+                        Rejoindre / Lien
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js"></script>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                initCalendar();
+                loadUserProfile();
+                loadUpcomingMeetings();
+            });
+
+            async function loadUserProfile() {
+                try {
+                    const res = await fetch('/api/user/me');
+                    if (res.ok) {
+                        const user = await res.json();
+                        const profileNameEl = document.getElementById('profileName');
+                        if (profileNameEl) profileNameEl.textContent = user.fullname || user.username;
+
+                        const initials = (user.fullname || user.username).substring(0, 2).toUpperCase();
+                        const profileImgEl = document.getElementById('profileImg');
+                        if (profileImgEl) {
+                            profileImgEl.src = `https://ui-avatars.com/api/?name=${initials}&background=10b981&color=fff`;
+                            profileImgEl.style.width = '40px';
+                            profileImgEl.style.height = '40px';
+                            profileImgEl.style.borderRadius = '50%';
+                            profileImgEl.style.marginLeft = '10px';
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+
+            function initCalendar() {
+                const calendarEl = document.getElementById('calendar');
+                if (!calendarEl) return;
+                const calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'fr',
+                    headerToolbar: false, // On utilise notre propre toolbar
+                    events: '/api/meetings',
+                    editable: true,
+                    eventResize: async function (info) {
+                        if (!info.event.id) {
+                            if (typeof toast !== 'undefined') toast.error("Impossible de redimensionner : ID introuvable.");
+                            info.revert();
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(`/api/meetings/${info.event.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    start: info.event.startStr,
+                                    end: info.event.end ? info.event.endStr : null
+                                })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Échec de la sauvegarde (Code: ${response.status})`);
+                            }
+
+                            if (typeof toast !== 'undefined') toast.success("Redimensionnement sauvegardé");
+                        } catch (e) {
+                            console.error("Erreur de redimensionnement:", e);
+                            if (typeof toast !== 'undefined') toast.error("Erreur de synchronisation avec le serveur");
+                            info.revert();
+                        }
+                    },
+                    eventDrop: async function (info) {
+                        if (!info.event.id) {
+                            if (typeof toast !== 'undefined') toast.error("Impossible de déplacer : ID introuvable.");
+                            info.revert();
+                            return;
+                        }
+
+                        try {
+                            const response = await fetch(`/api/meetings/${info.event.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    start: info.event.startStr,
+                                    end: info.event.end ? info.event.endStr : null
+                                })
+                            });
+
+                            if (!response.ok) {
+                                throw new Error(`Échec de la sauvegarde (Code: ${response.status})`);
+                            }
+
+                            if (typeof toast !== 'undefined') toast.success("Déplacement sauvegardé");
+                        } catch (e) {
+                            console.error("Erreur de déplacement:", e);
+                            if (typeof toast !== 'undefined') toast.error("Erreur de synchronisation avec le serveur");
+                            info.revert();
+                        }
+                    },
+                    eventClick: function (info) {
+                        if (typeof toast !== 'undefined') {
+                            toast.info(`Réunion : ${info.event.title}\nLieu : ${info.event.extendedProps.location || 'N/A'}`);
+                        }
+                    },
+                    themeSystem: 'standard',
+                    datesSet: function (info) {
+                        const monthDisplay = document.getElementById('monthDisplay');
+                        if (monthDisplay) {
+                            monthDisplay.textContent = info.view.title.charAt(0).toUpperCase() + info.view.title.slice(1);
+                        }
+                    }
+                });
+                calendar.render();
+
+                // Lier les boutons personnalisés
+                const prevBtn = document.getElementById('prevMonth');
+                const nextBtn = document.getElementById('nextMonth');
+                const todayBtn = document.getElementById('todayBtn');
+
+                if (prevBtn) prevBtn.addEventListener('click', () => calendar.prev());
+                if (nextBtn) nextBtn.addEventListener('click', () => calendar.next());
+                if (todayBtn) todayBtn.addEventListener('click', () => calendar.today());
+            }
+
+            async function loadUpcomingMeetings() {
+                const todayContainer = document.getElementById('todayAgendaList');
+                const upcomingContainer = document.getElementById('upcomingAgendaList');
+                try {
+                    const res = await fetch('/api/meetings');
+                    if (res.ok) {
+                        const meetings = await res.json();
+                        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+                        const todayEnd = new Date(); todayEnd.setHours(23, 59, 59, 999);
+
+                        // Agenda du jour
+                        const todayMeetings = meetings.filter(m => {
+                            const mStart = new Date(m.start_time);
+                            return mStart >= todayStart && mStart <= todayEnd;
+                        }).sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+                        if (todayMeetings.length > 0 && todayContainer) {
+                            todayContainer.innerHTML = todayMeetings.map(m => `
+                                <div class="agenda-item" onclick="toast.info('Détails de ${m.title.replace(/'/g, "\\'")}')">
+                                    <span class="time-badge"><i class="fa-regular fa-clock"></i> ${new Date(m.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <h4 style="margin: 0 0 5px 0; font-size: 0.95rem;">${m.title}</h4>
+                                    <p style="font-size: 0.8rem; color: #666; margin: 0;"><i class="fa-solid fa-location-dot"></i> ${m.location || 'Visio'}</p>
+                                </div>
+                            `).join('');
+                        } else if (todayContainer) {
+                            todayContainer.innerHTML = "<p style='color:#999; font-size:0.9rem;'>Aucune réunion aujourd'hui.</p>";
+                        }
+
+                        // Prochainement
+                        const upcoming = meetings
+                            .filter(m => new Date(m.start_time) > todayEnd)
+                            .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+                            .slice(0, 5);
+
+                        if (upcoming.length > 0 && upcomingContainer) {
+                            upcomingContainer.innerHTML = upcoming.map(m => `
+                                <div class="agenda-item" onclick="toast.info('Détails de ${m.title.replace(/'/g, "\\'")}')">
+                                    <span class="time-badge"><i class="fa-regular fa-calendar"></i> ${new Date(m.start_time).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} - ${new Date(m.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <h4 style="margin: 0 0 5px 0; font-size: 0.95rem;">${m.title}</h4>
+                                    <p style="font-size: 0.8rem; color: #666; margin: 0;"><i class="fa-solid fa-location-dot"></i> ${m.location || 'Visio'}</p>
+                                </div>
+                            `).join('');
+                        } else if (upcomingContainer) {
+                            upcomingContainer.innerHTML = '<p style="color:#999; font-size:0.9rem;">Rien de prévu.</p>';
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }
+        </script>
+</body>
+
+</html>

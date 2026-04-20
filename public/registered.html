@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Déjà Enregistré - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #00A650;
+            --primary-dark: #007a3d;
+            --bg-soft: #f0fdf4;
+            --text-main: #1f2937;
+            --text-light: #6b7280;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--bg-soft) 0%, #ffffff 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-main);
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .icon-box {
+            width: 80px;
+            height: 80px;
+            background: var(--bg-soft);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            margin: 0 auto 24px auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: var(--primary);
+        }
+
+        p {
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .details-box {
+            background: #f9fafb;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: left;
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+
+        .detail-item {
+            margin-bottom: 12px;
+        }
+
+        .detail-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: #9ca3af;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="icon-box">
+            <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h1>Déjà enregistré !</h1>
+        <p id="welcomeMsg">Chargement de vos informations...</p>
+
+        <div class="details-box" id="detailsBox" style="display:none;">
+            <div class="detail-item">
+                <div class="label">Participant</div>
+                <div class="value" id="userName">--</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">Structure</div>
+                <div class="value" id="userStructure">--</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">Réunion</div>
+                <div class="value" id="meetingTitle">--</div>
+            </div>
+            <div class="detail-item">
+                <div class="label">Date d'enregistrement</div>
+                <div class="value" id="regDate">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uuid = window.location.pathname.split('/')[2];
+
+        async function fetchDetails() {
+            try {
+                const res = await fetch(`/api/public/attendee-details/${uuid}`);
+                if (!res.ok) throw new Error("Erreur");
+                const data = await res.json();
+
+                document.getElementById('welcomeMsg').innerHTML = `Mr/Mme <strong>${data.nom}</strong> de <strong>${data.structure}</strong>, vous êtes déjà enregistré à cette réunion.`;
+
+                document.getElementById('userName').textContent = `${data.prenom} ${data.nom}`;
+                document.getElementById('userStructure').textContent = data.structure || 'Non précisée';
+                document.getElementById('meetingTitle').textContent = data.meeting_title;
+
+                const date = new Date(data.created_at);
+                document.getElementById('regDate').textContent = date.toLocaleString('fr-FR', {
+                    day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+                });
+
+                document.getElementById('detailsBox').style.display = 'block';
+            } catch (e) {
+                console.error(e);
+                document.getElementById('welcomeMsg').textContent = "Nous n'avons pas pu récupérer vos détails d'enregistrement.";
+            }
+        }
+
+        if (uuid) fetchDetails();
+    </script>
+</body>
+
+</html>

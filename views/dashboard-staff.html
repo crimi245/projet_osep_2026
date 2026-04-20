@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSEP — Tableau de Bord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <link rel="stylesheet" href="/public/css/dashboard-staff.css">
+    <script src="/public/js/theme.js"></script>
+</head>
+<body style="background: #f0f2f5;">
+
+    <%- include('partials/' + sidebarFile) %>
+
+    <main class="main-content">
+
+        <header class="top-bar">
+            <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <div style="flex:1;"></div>
+            <div class="user-area">
+                <div class="user-profile">
+                    <!-- Disparition complète des notifications (cloche et encoche retirées) -->
+
+                    <div>
+                        <h4 style="font-size: 0.9rem;"><%= user.fullname || user.username %></h4>
+                        <p style="font-size: 0.75rem; color: #888;">Staff Finance</p>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(user.fullname || user.username) %>&background=0f3d2e&color=fff"
+                        style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                </div>
+            </div>
+        </header>
+
+        <div class="db-wrapper">
+
+            <!-- Page header -->
+            <div class="page-header" style="margin-top: 10px;">
+                <div>
+                    <h1>Tableau de bord</h1>
+                    <p>Bienvenue sur votre espace de pilotage financier.</p>
+                </div>
+            </div>
+
+            <!-- Filtres Dashboard (Période) -->
+            <div class="ss-filter-bar" style="display: flex; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; align-items: center;">
+                <div class="ss-filter-group" style="display: flex; align-items: center; gap: 10px; background: white; padding: 8px 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #64748b;">Du</span>
+                    <input type="date" id="filterStartDate" style="border: none; outline: none; font-weight: 500; font-size: 0.9rem; cursor: pointer; color: #1e293b; background: transparent;">
+                </div>
+
+                <div class="ss-filter-group" style="display: flex; align-items: center; gap: 10px; background: white; padding: 8px 15px; border-radius: 12px; border: 1px solid #e2e8f0;">
+                    <span style="font-size: 0.85rem; font-weight: 600; color: #64748b;">Au</span>
+                    <input type="date" id="filterEndDate" style="border: none; outline: none; font-weight: 500; font-size: 0.9rem; cursor: pointer; color: #1e293b; background: transparent;">
+                </div>
+            </div>
+
+            <!-- KPI Grid -->
+            <div class="osep-grid">
+                <div class="osep-card">
+                    <div class="icon-circle">
+                        <span class="material-symbols-outlined">calendar_month</span>
+                    </div>
+                    <div class="kpi-label">Réunions (Année)</div>
+                    <div class="kpi-num" id="kpiTotalMeetings">0</div>
+                    <div class="kpi-trend positive">
+                        <i class="fa-solid fa-arrow-up"></i> <span>--%</span> <small>vs an dernier</small>
+                    </div>
+                </div>
+
+                <div class="osep-card">
+                    <div class="icon-circle" style="color: #10b981; background: rgba(16, 185, 129, 0.1);">
+                        <span class="material-symbols-outlined">group</span>
+                    </div>
+                    <div class="kpi-label">Taux de Validation</div>
+                    <div class="kpi-num" id="kpiAttendanceRate">0%</div>
+                    <div class="kpi-subtext" id="kpiParticipantsCount">0 participants total</div>
+                </div>
+
+                <div class="osep-card">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div class="icon-circle" style="color: #f59e0b; background: rgba(245, 158, 11, 0.1);">
+                            <span class="material-symbols-outlined">payments</span>
+                        </div>
+                        <select id="budgetPeriod" style="padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 0.75rem; color: #6b7280; outline: none; cursor: pointer;">
+                            <option value="hebdo">Hebdo</option>
+                            <option value="mois">Mois</option>
+                            <option value="annee" selected>Année</option>
+                        </select>
+                    </div>
+                    <div class="kpi-label">Budget Engagement</div>
+                    <div style="display:flex; align-items:center; gap:5px; margin-bottom:10px; flex-wrap: nowrap;">
+                        <input type="number" id="budgetAmount" placeholder="0" style="font-size: 1.5rem; font-weight: 700; color: var(--db-text); width: 60%; border: none; border-bottom: 1px dashed #ccc; outline: none; background: transparent; padding: 2px 0;" />
+                        <span style="font-size: 1rem; font-weight: 700; color: var(--db-text);">FCFA</span>
+                    </div>
+                    <div class="kpi-subtext">Budget prévisionnel à <span id="budgetLabelDisplay">l'année</span></div>
+                </div>
+
+                <div class="osep-card card-emerald">
+                    <div class="icon-circle">
+                        <span class="material-symbols-outlined">account_balance_wallet</span>
+                    </div>
+                    <div class="kpi-label">Paiements Validés</div>
+                    <div class="kpi-num" id="kpiMontantVerse" style="font-size: 1.5rem;">0 FCFA</div>
+                    <div class="kpi-subtext" style="color: rgba(255,255,255,0.8)">Montant décaissable</div>
+                </div>
+            </div>
+            
+            <!-- Pilotage Financier Consolidé (BI) -->
+            <div class="osep-card" style="margin: 25px 0; background: #fdf2f2; border: 1px solid #fee2e2;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <div class="icon-circle" style="background: rgba(220, 38, 38, 0.1); color: #dc2626; width: 48px; height: 48px; margin-bottom: 0; font-size: 1.4rem;">
+                            <i class="fa-solid fa-hand-holding-dollar"></i>
+                        </div>
+                        <div>
+                            <h4 style="margin:0 0 4px 0; font-size: 1.1rem; color: #991b1b;">Pilotage Financier Global</h4>
+                            <p style="margin:0; font-size:0.8rem; color:#666;">Vue consolidée sur l'ensemble des exercices</p>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size: 1.8rem; font-weight: 800; color: #dc2626;" id="biTotalValide">0 FCFA</div>
+                        <div style="font-size: 0.9rem; color: #991b1b; font-weight: 600; margin-top: 4px;" id="biTotalEnAttente">En attente: 0 FCFA</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section Title (No filters here, moved to Stats Staff) -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;">
+                <h2 style="font-size: 1.1rem; color: #64748b; font-weight: 500;">Aperçu de l'activité annuelle (CCMS & Coordination)</h2>
+                <div id="lblDateRange" style="font-size: 0.85rem; color: #94a3b8;">Année en cours</div>
+            </div>
+
+
+            <!-- Main Content Area -->
+            <div style="width: 100%;">
+                
+                <!-- Chart Section -->
+                <div class="db-chart-section osep-card" style="padding: 30px; margin-bottom: 30px;">
+                    <h3 style="margin-bottom: 25px; font-size: 1.2rem; font-weight: 700;">Tendance des Réunions CCMS</h3>
+                    <div class="db-chart-legend">
+                        <span class="db-legend-item">
+                            <span class="db-dot-legend" style="background: #16a34a;"></span> Période actuelle
+                        </span>
+                        <span class="db-legend-item">
+                            <span class="db-dot-legend grey"></span> Période précédente
+                        </span>
+                    </div>
+                    <div class="db-chart-container" style="height: 380px;">
+                        <canvas id="statsChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Table Section -->
+                <div class="db-table-section osep-card" style="padding: 30px; margin-bottom: 30px;">
+                    <h3 style="margin-bottom: 20px; font-size: 1.2rem; font-weight: 700;">Recapitulatif Financier Mensuel</h3>
+                    <div class="db-table-container">
+                        <table id="statsTable">
+                            <thead>
+                                <tr>
+                                    <th>Mois</th>
+                                    <th class="text-right"># CCMS</th>
+                                    <th class="text-right">Engagement Financier</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statsTableBody">
+                                <!-- Données injectées par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Activities & Urgent Validations -->
+                <div class="osep-grid" style="grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
+                    <div class="osep-card">
+                        <h3 style="display:flex; align-items:center; gap:10px;">
+                            <span class="material-symbols-outlined">admin_panel_settings</span> Réunions Gérées (Finance)
+                        </h3>
+                        <div id="managedMeetingsList" style="margin-top:15px;"></div>
+                    </div>
+
+                    <div class="osep-card">
+                        <h3 style="display:flex; align-items:center; gap:10px;">
+                            <span class="material-symbols-outlined">edit_square</span> Mes Réunions Créées
+                        </h3>
+                        <div id="createdMeetingsList" style="margin-top:15px;"></div>
+                    </div>
+                </div>
+
+                <div class="osep-card card-emerald" style="margin-bottom: 50px;">
+                    <h3 style="color:white; display:flex; align-items:center; gap:10px;">
+                        <span class="material-symbols-outlined">warning</span> Validations Urgentes (Gérées)
+                    </h3>
+                    <div id="urgentValidations" style="margin-top:15px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;"></div>
+                    <a href="/gestion-staff" class="db-btn-outline" style="margin-top:20px; width:100%; justify-content:center; background:rgba(255,255,255,0.1); border-color:rgba(255,255,255,0.2); color:white;">
+                        Accéder à la Révision des Paiements
+                    </a>
+                </div>
+
+            </div>
+
+        </div><!-- /db-wrapper -->
+
+    </main>
+
+    <!-- Modal de Rapprochement Excel -->
+    <div id="modalRapprochement" class="osep-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10000; justify-content:center; align-items:center; backdrop-filter: blur(4px);">
+        <div style="background:white; padding:30px; border-radius:20px; width:450px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); position:relative; animation: slideIn 0.3s ease-out;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0; color: #1e293b; text-align: left;"><i class="fa-solid fa-file-import" style="color:var(--primary);"></i> Rapprochement Excel</h3>
+                <button onclick="closeRapprochementModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:#64748b;">&times;</button>
+            </div>
+            
+            <p style="font-size:0.9rem; color:#64748b; margin-bottom:20px; text-align: left;">Utilisez ce formulaire pour valider massivement les participants de la réunion <strong><span id="rapTitle">...</span></strong> à partir d'un fichier Excel.</p>
+            
+            <form id="formRapprochement" onsubmit="submitRapprochement(event)">
+                <input type="hidden" id="rapMeetingId">
+                <div style="padding:40px 20px; border:2px dashed #e2e8f0; border-radius:12px; text-align:center; background:#f8fafc; cursor:pointer;" onclick="document.getElementById('fileInput').click()">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size:2.5rem; color:#94a3b8; margin-bottom:15px;"></i>
+                    <p style="margin:0; font-weight:600; font-size:0.9rem; color:#475569;">Cliquez pour choisir un fichier</p>
+                    <p style="margin:5px 0 0 0; font-size:0.75rem; color:#94a3b8;">Format supporté : .xlsx, .xls</p>
+                    <input type="file" id="fileInput" name="fichier" accept=".xlsx,.xls" style="display:none;" onchange="updateFileName(this)">
+                </div>
+                <div id="fileName" style="margin-top:10px; font-size:0.85rem; color:var(--primary); font-weight:600; text-align:center;"></div>
+                
+                <div style="margin-top:30px; display:flex; gap:10px;">
+                    <button type="button" class="btn-light" onclick="closeRapprochementModal()" style="flex:1;">Annuler</button>
+                    <button type="submit" class="btn-dark" style="flex:1; background: var(--primary);">Lancer le rapprochement</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <style>
+        @keyframes slideIn { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .osep-modal { display: none; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/js/profile-dropdown.js?v=2"></script>
+    <script src="/public/js/dashboard-staff.js"></script>
+</body>
+</html>

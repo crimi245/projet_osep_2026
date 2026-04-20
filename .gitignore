@@ -1,0 +1,50 @@
+# ========================
+# DÉPENDANCES
+# ========================
+node_modules/
+
+# ========================
+# ENVIRONNEMENT & SECRETS
+# ========================
+.env
+.env.*
+!.env.example
+
+# ========================
+# LOGS
+# ========================
+logs/
+*.log
+npm-debug.log*
+
+# ========================
+# BACKUPS
+# ========================
+backups/
+
+# ========================
+# UPLOADS & FICHIERS GÉNÉRÉS
+# ========================
+uploads/
+!uploads/.gitkeep
+
+# ========================
+# BASE DE DONNÉES
+# ========================
+database/*_old_*.sql
+database/schema_from_db.sql
+
+# ========================
+# SYSTÈME & ÉDITEURS
+# ========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ========================
+# FICHIERS TEMPORAIRES
+# ========================
+*.tmp
+*.temp
+bar

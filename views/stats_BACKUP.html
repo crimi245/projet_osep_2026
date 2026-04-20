@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiques OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <script src="/public/js/theme.js"></script>
+    <link rel="stylesheet" href="style-dashboard.css">
+    <style>
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, minmax(150px, auto));
+            gap: 24px;
+        }
+
+        .span-2-col {
+            grid-column: span 2;
+        }
+
+        .span-2-row {
+            grid-row: span 2;
+        }
+
+        .heatmap-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 4px;
+            margin-top: 15px;
+        }
+
+        .heat-box {
+            height: 30px;
+            border-radius: 4px;
+            background: #f3f4f6;
+            transition: transform 0.2s;
+        }
+
+        .heat-box:hover {
+            transform: scale(1.2);
+            z-index: 10;
+            border: 1px solid #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .lvl-0 { background: #f3f4f6; }
+        .lvl-1 { background: #dcfce7; }
+        .lvl-2 { background: #86efac; }
+        .lvl-3 { background: #22c55e; }
+        .lvl-4 { background: #0f3d2e; }
+
+        .radar-box {
+            height: 250px;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+    <main class="main-content">
+
+        <header class="top-bar">
+            <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()"><i
+                    class="fa-solid fa-bars"></i></button>
+            <div class="search-bar">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" placeholder="Rechercher une donnée, un KPI...">
+            </div>
+            <div class="user-area">
+                <i class="fa-regular fa-bell"></i>
+                <div class="user-profile">
+                    <div>
+                        <h4 style="font-size: 0.9rem;">Admin</h4>
+                        <p style="font-size: 0.75rem; color: #888;">Statistiques</p>
+                    </div>
+                    <img src="https://ui-avatars.com/api/?name=AD&background=0f3d2e&color=fff"
+                        style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                </div>
+            </div>
+        </header>
+
+        <div class="page-header">
+            <div>
+                <h1>Vue d'Ensemble Système</h1>
+                <p>Agrégation de toutes les métriques de performance.</p>
+            </div>
+            <div class="header-btns">
+                <select class="btn-light" style="border-radius: 30px; padding: 10px 20px;" id="statsPeriodSelect">
+                    <option value="7d">7 derniers jours</option>
+                    <option value="1m">Ce mois-ci</option>
+                    <option value="1y">Cette année</option>
+                </select>
+                <button class="btn-dark" id="btnGeneratePdf"><i class="fa-solid fa-file-pdf"></i> Rapport PDF</button>
+            </div>
+        </div>
+
+        <section class="bento-grid">
+
+            <div class="card card-green span-1">
+                <div class="icon-circle"><i class="fa-regular fa-clock"></i></div>
+                <p>Temps Total Réunions</p>
+                <div class="kpi-num" id="kpiTotalTime">--</div>
+                <div><span class="badge badge-green">+12%</span> vs N-1</div>
+            </div>
+
+            <div class="card span-1">
+                <p style="color:#666; margin-bottom:5px;">Efficacité</p>
+                <div style="display:flex; align-items:end; gap:10px;">
+                    <span class="kpi-num" id="kpiEfficiency">94%</span>
+                    <span style="color:#22c55e; font-size:0.9rem; margin-bottom:10px;">▲ Optimale</span>
+                </div>
+                <div style="height: 50px; width: 100%; margin-top: auto;">
+                    <canvas id="sparklineChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card span-2-col span-2-row">
+                <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+                    <h3>Flux d'Activité Global</h3>
+                    <div style="display:flex; gap:10px;">
+                        <span style="font-size:0.8rem; color:#888;"><i class="fa-solid fa-circle"
+                                style="color:#0f3d2e"></i> Réunions</span>
+                        <span style="font-size:0.8rem; color:#888;"><i class="fa-solid fa-circle"
+                                style="color:#22c55e"></i> Connexions</span>
+                    </div>
+                </div>
+                <div style="flex:1; width:100%;">
+                    <canvas id="mainAreaChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card span-2-col">
+                <h3>Densité d'Occupation (Heatmap)</h3>
+                <p style="font-size:0.8rem; color:#888; margin-bottom:10px;">Fréquence des réunions par heure (08h - 19h)</p>
+                <div class="heatmap-container" id="heatmapGrid"></div>
+                <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:#888; margin-top:5px;">
+                    <span>08:00</span>
+                    <span>13:00</span>
+                    <span>19:00</span>
+                </div>
+            </div>
+
+            <div class="card span-1 span-2-row">
+                <h3>Typologie</h3>
+                <div class="radar-box">
+                    <canvas id="radarChart"></canvas>
+                </div>
+                <div style="text-align:center; font-size:0.8rem; color:#666;">Répartition par service</div>
+            </div>
+
+            <div class="card span-1">
+                <h3>Appareils</h3>
+                <div style="display:flex; align-items:center; justify-content:space-around; margin-top:20px;">
+                    <div style="text-align:center;">
+                        <i class="fa-solid fa-desktop" style="font-size:1.5rem; color:#0f3d2e;"></i>
+                        <div style="font-weight:bold; margin-top:5px;" id="deviceDesktopVal">--%</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <i class="fa-solid fa-mobile-screen" style="font-size:1.5rem; color:#22c55e;"></i>
+                        <div style="font-weight:bold; margin-top:5px;" id="deviceMobileVal">--%</div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/js/profile-dropdown.js?v=2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats('7d');
+            document.getElementById('statsPeriodSelect').addEventListener('change', (e) => {
+                loadStats(e.target.value);
+            });
+            document.getElementById('btnGeneratePdf').addEventListener('click', () => {
+                window.location.href = '/api/reports/stats';
+            });
+        });
+
+        async function loadStats(period) {
+            try {
+                const res = await fetch(`/api/stats/global?period=${period}`);
+                if (!res.ok) throw new Error("API Error");
+                const data = await res.json();
+                document.getElementById('kpiTotalTime').innerText = data.totalHours + " h";
+                document.getElementById('kpiEfficiency').innerText = data.efficiency + "%";
+                document.getElementById('deviceDesktopVal').innerText = data.devices.desktop + "%";
+                document.getElementById('deviceMobileVal').innerText = data.devices.mobile + "%";
+                renderCharts(data);
+            } catch (e) {
+                console.error("Stats Error", e);
+            }
+        }
+
+        let mainChart = null;
+        let radarChart = null;
+
+        function renderCharts(data) {
+            const ctxMain = document.getElementById('mainAreaChart');
+            if (ctxMain) {
+                if (mainChart) mainChart.destroy();
+                mainChart = new Chart(ctxMain, {
+                    type: 'line',
+                    data: {
+                        labels: data.trends.map(t => t.day),
+                        datasets: [{
+                            label: 'Réunions',
+                            data: data.trends.map(t => t.count),
+                            borderColor: '#0f3d2e',
+                            backgroundColor: 'rgba(15, 61, 46, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: { maintainAspectRatio: false, plugins: { legend: { display: false } } }
+                });
+            }
+
+            const ctxRadar = document.getElementById('radarChart');
+            if (ctxRadar) {
+                if (radarChart) radarChart.destroy();
+                radarChart = new Chart(ctxRadar, {
+                    type: 'radar',
+                    data: {
+                        labels: data.radar.map(r => r.name),
+                        datasets: [{
+                            label: 'Réunions',
+                            data: data.radar.map(r => r.count),
+                            backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                            borderColor: '#22c55e'
+                        }]
+                    },
+                    options: { maintainAspectRatio: false }
+                });
+            }
+
+            const heatGrid = document.getElementById('heatmapGrid');
+            if (heatGrid) {
+                heatGrid.innerHTML = '';
+                for (let h = 8; h <= 19; h++) {
+                    const count = data.heatmap[h] || 0;
+                    const lvl = count > 5 ? 'lvl-4' : count > 2 ? 'lvl-3' : count > 0 ? 'lvl-1' : 'lvl-0';
+                    heatGrid.innerHTML += `<div class="heat-box ${lvl}" title="${h}h: ${count} réunions"></div>`;
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

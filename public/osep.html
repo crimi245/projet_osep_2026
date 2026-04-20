@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulaire de gestion de présence </title>
+    <link rel="stylesheet" href="/public/styles.css">
+</head>
+
+<body>
+    <header>
+        <img src="/public/logo.jpg" alt="Logo de l'entreprise" id="logo">
+        <h2 id="header">GESTION DE PRESENCE</h2>
+    </header>
+    <main>
+        <section id="formulaire">
+            <div id="statusMessage"
+                style="display:none; text-align:center; padding: 20px; border-radius: 10px; margin-bottom: 20px;"></div>
+
+            <form id="monFormulaire">
+                <div id="emailStep">
+                    <label for="email">Entrez votre adresse Gmail</label><br>
+                    <br>
+                    <input type="email" id="email" name="email" required placeholder="votre_email@gmail.com"><br>
+                    <br>
+
+                    <!-- Section Défi (Apparaît si GPS bloqué ou doute) -->
+                    <div id="challengeStep"
+                        style="display:none; margin: 20px 0; padding: 15px; background: #fff7ed; border: 1px solid #fdba74; border-radius: 10px;">
+                        <p style="color: #9a3412; font-size: 0.9rem; margin-bottom: 10px;">
+                            <strong>Vérification de présence requise :</strong><br>
+                            Votre localisation exacte n'a pas pu être confirmée. Veuillez entrer le code à 3 chiffres
+                            affiché au tableau.
+                        </p>
+                        <input type="text" id="challenge_code" name="challenge_code" maxlength="3"
+                            placeholder="Code (ex: 123)"
+                            style="font-size: 1.5rem; text-align: center; width: 120px; letter-spacing: 5px; border: 2px solid #ea580c;">
+                    </div>
+
+                    <div id="gpsStatus" style="font-size: 0.8rem; color: #666; margin-bottom: 15px;">
+                        <i class="fa-solid fa-location-dot"></i> Détection de votre position pour le bouclier OSEP...
+                    </div>
+
+                    <button type="submit" id="submitBtn"
+                        style="padding: 10px 20px; border-radius: 5px; cursor: pointer;">Vérifier</button>
+                    <br><br>
+                </div>
+            </form>
+
+        </section>
+    </main>
+
+    <script src="/public/js/fingerprint.js"></script>
+    <script>
+        const uuid = window.location.pathname.split('/').pop();
+        let edrData = { fingerprint: null, gps: null };
+        const statusMsg = document.getElementById('statusMessage');
+        const emailStep = document.getElementById('emailStep');
+        const quotaSection = document.getElementById('quotaSection');
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            FingerprintOSEP.genererEmpreinte().then(res => {
+                edrData.fingerprint = res.hash;
+                localStorage.setItem('osep_fingerprint', res.hash);
+            });
+
+            FingerprintOSEP.obtenirPosition().then(pos => {
+                const gpsEl = document.getElementById('gpsStatus');
+                if (pos.succes) {
+                    edrData.gps = { lat: pos.lat, lng: pos.lng };
+                    if (gpsEl) gpsEl.innerHTML = '<i class="fa-solid fa-check-circle" style="color:green"></i> Présence vérifiée par GPS';
+                } else {
+                    if (gpsEl) gpsEl.innerHTML = '<i class="fa-solid fa-exclamation-triangle" style="color:#d97706"></i> Position non détectée (Uutilisation du code salle possible)';
+                }
+            });
+
+            // Validation UUID (Regex pour éviter les erreurs type osep.html)
+            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            if (uuid && uuidRegex.test(uuid)) {
+                try {
+                    const res = await fetch(`/api/public/meetings/${uuid}/status`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.isFinished) window.location.href = `/reunion-terminee.html?uuid=${uuid}`;
+                    }
+                } catch (e) {
+                    console.error("Erreur statut", e);
+                }
+            } else if (uuid !== "") {
+                console.warn("UUID non valide détecté dans l'URL:", uuid);
+            }
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const dynamicToken = urlParams.get('t'); // Jeton tournant de 30s (Étape 4)
+        if (dynamicToken) {
+            localStorage.setItem('osep_dynamic_token', dynamicToken);
+        }
+
+        // Helper function to display messages
+        function afficherMessage(message, type) {
+            statusMsg.style.display = 'block';
+            statusMsg.innerHTML = message;
+            switch (type) {
+                case 'success':
+                    statusMsg.style.background = '#d1fae5';
+                    statusMsg.style.color = '#065f46';
+                    statusMsg.style.border = '1px solid #059669';
+                    break;
+                case 'info':
+                    statusMsg.style.background = '#e0f2fe';
+                    statusMsg.style.color = '#0369a1';
+                    statusMsg.style.border = '1px solid #0ea5e9';
+                    break;
+                case 'danger':
+                    statusMsg.style.background = '#fee2e2';
+                    statusMsg.style.color = '#dc2626';
+                    statusMsg.style.border = '1px solid #ef4444';
+                    break;
+                default:
+                    statusMsg.style.background = '#f3f4f6';
+                    statusMsg.style.color = '#1f2937';
+                    statusMsg.style.border = '1px solid #d1d5db';
+            }
+        }
+
+
+        async function verifierIdentite() {
+            const email = document.getElementById('email').value;
+            if (!email || !email.includes('@')) {
+                alert("Veuillez entrer une adresse Gmail valide.");
+                return;
+            }
+
+            const btn = document.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerText = "Vérification...";
+
+            try {
+                const response = await fetch(`/api/public/check-identity/${uuid}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email,
+                        fingerprint: edrData.fingerprint,
+                        gps: edrData.gps,
+                        challenge_code: document.getElementById('challenge_code')?.value || null,
+                        t: dynamicToken // Transmission du jeton tournant
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.status === 403) {
+                    // Erreur spécifique (QR expiré ou bloqué par IA)
+                    afficherMessage(data.reason || data.error, 'danger');
+                    btn.disabled = false;
+                    btn.innerText = "Vérifier";
+                    return;
+                }
+
+                if (data.decisionIA === 'CHALLENGE_AUTO' || data.decisionIA === 'BLOQUE') {
+                    // Score médiocre ou bloqué (ex: sans GPS) -> On demande le code de la salle
+                    document.getElementById('challengeStep').style.display = 'block';
+                    document.getElementById('challenge_code').required = true;
+                    document.getElementById('challenge_code').focus();
+                    afficherMessage(
+                        data.decisionIA === 'BLOQUE'
+                            ? "Localisation GPS non détectée. Veuillez autoriser le GPS ou entrer le code affiché en salle."
+                            : "Veuillez entrer le code de présence affiché dans la salle.",
+                        data.decisionIA === 'BLOQUE' ? 'danger' : 'info'
+                    );
+                    btn.disabled = false;
+                    btn.innerText = "Valider le code";
+                    return;
+                }
+
+                // Stocker le jeton de session si fourni (Pour bypasser le QR tournant aux étapes suivantes)
+                if (data.sessionToken) {
+                    localStorage.setItem('osep_session_token', data.sessionToken);
+                    // On pourrait aussi mettre un en-tête pour les prochains fetch
+                }
+
+                if (data.participant) {
+                    // Reconnu !
+                    localStorage.setItem('participant_email', email);
+                    localStorage.setItem('participant_nom', data.participant.nom_complet);
+                    localStorage.setItem('participant_details', JSON.stringify(data.participant));
+
+                    afficherMessage(`Ravi de vous revoir, ${data.participant.nom_complet} (${data.participant.departement}). Redirection vers la signature...`, 'success');
+                    setTimeout(() => window.location.href = `/sign/${uuid}`, 1500);
+                } else {
+                    // Inconnu -> Formulaire complet
+                    localStorage.setItem('userEmail', email); // Sauvegarde pour osep2.html
+                    const currentPath = window.location.pathname.replace(/\/+$/, '');
+                    window.location.href = `/meeting/${uuid}/details`;
+                }
+
+            } catch (err) {
+                console.error("Erreur d'identification", err);
+                afficherMessage("Erreur réseau ou serveur.", 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "S'identifier";
+            }
+        }
+
+        document.getElementById('monFormulaire').addEventListener('submit', function (e) {
+            e.preventDefault();
+            verifierIdentite();
+        });
+
+        function abandonner() {
+            window.location.reload();
+        }
+
+    </script>
+</body>
+
+</html>

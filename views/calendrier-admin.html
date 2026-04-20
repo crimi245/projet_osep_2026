@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - Calendrier OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/js/profile-dropdown.js?v=2"></script>
+    <style>
+        /* Personnalisation de FullCalendar */
+        #calendar {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            min-height: 700px;
+        }
+
+        .fc-event {
+            cursor: pointer;
+            border: none;
+        }
+
+        .fc-toolbar-title {
+            font-size: 1.5rem !important;
+            font-weight: 700;
+        }
+
+        .fc-button {
+            background-color: var(--primary) !important;
+            border-color: var(--primary) !important;
+        }
+
+        .fc-button:hover {
+            background-color: var(--primary-dark) !important;
+            border-color: var(--primary-dark) !important;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+
+            <header class="top-bar">
+                <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 style="font-size: 0.9rem;" id="userFullName">Admin</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Calendrier</p>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=AD&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Administration du Calendrier</h1>
+                    <p>Gérez vos événements et réunions.</p>
+                </div>
+                <div class="header-btns" style="display: flex; gap: 10px;">
+                    <button class="btn-dark" onclick="window.location.href='/new-meeting'">
+                        <i class="fa-solid fa-plus"></i> Nouvelle Réunion
+                    </button>
+                    <button class="btn-dark" onclick="window.location.href='/calendar-tailwind'"
+                        style="background-color: #0ea5e9; border-color: #0ea5e9;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Tableau de bord avancé
+                    </button>
+                </div>
+            </div>
+
+            <div id="calendar"></div>
+
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <!-- Le JS du thème a été déplacé dans le head -->
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var calendarEl = document.getElementById('calendar');
+                var calendar = new FullCalendar.Calendar(calendarEl, {
+                    initialView: 'dayGridMonth',
+                    locale: 'fr',
+                    headerToolbar: {
+                        left: 'prev,next today',
+                        center: 'title',
+                        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    },
+                    events: '/api/meetings', // Récupération automatique
+                    editable: true,
+                    selectable: true,
+                    eventColor: getComputedStyle(document.body).getPropertyValue('--primary').trim(),
+
+                    // Écouteur pour les changements de thème
+                    eventDidMount: function (info) {
+                        // Forcer la mise à jour de la couleur si nécessaire ou se fier au rafraîchissement
+                    },
+
+                    // Déplacement d'événement (Glisser-Déposer)
+                    eventDrop: async function (info) {
+                        const confirmed = await showConfirm('Déplacer cet événement ?', 'info', {
+                            title: 'Déplacement',
+                            confirmText: 'Déplacer'
+                        });
+                        if (!confirmed) {
+                            info.revert();
+                            return;
+                        }
+                        try {
+                            await fetch(`/api/meetings/${info.event.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    start: info.event.start.toISOString(),
+                                    end: info.event.end ? info.event.end.toISOString() : null
+                                })
+                            });
+                        } catch (e) {
+                            showToast("Erreur lors de la mise à jour", 'error');
+                            info.revert();
+                        }
+                    },
+
+                    // Redimensionnement d'événement
+                    eventResize: async function (info) {
+                        try {
+                            await fetch(`/api/meetings/${info.event.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    start: info.event.start.toISOString(),
+                                    end: info.event.end ? info.event.end.toISOString() : null
+                                })
+                            });
+                        } catch (e) {
+                            info.revert();
+                        }
+                    },
+
+                    // Clic sur Date -> Créer
+                    dateClick: function (info) {
+                        window.location.href = `/new-meeting?date=${info.dateStr}`;
+                    },
+
+                    // Clic sur Événement -> Modifier (ou voir)
+                    eventClick: function (info) {
+                        showToast('Événement : ' + info.event.title + '\nDescription : ' + (info.event.extendedProps.description || ''), 'info', 6000);
+                    }
+                });
+                calendar.render();
+
+                // Appliquer les infos Utilisateur
+                try {
+                    const userStr = sessionStorage.getItem('osep_user_profile'); // Utilise la vraie variable de profil OSEP
+                    if (userStr) {
+                        const user = JSON.parse(userStr);
+                        document.getElementById('userFullName').innerText = user.full_name || user.username;
+                    }
+                } catch (e) { }
+
+                window.logout = async function () {
+                    if (confirm("Se déconnecter ?")) {
+                        try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { }
+                        window.location.href = '/login?logout=success';
+                    }
+                };
+            });
+        </script>
+</body>
+
+</html>

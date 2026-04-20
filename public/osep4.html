@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste de Présence - OSEP</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        /* Style d'en-tête similaire à mon image */
+        .header-bar {
+            background-color: #ffb700;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-bar h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .header-bar .subtitle {
+            font-size: 24px;
+            font-weight: normal;
+            color: #000;
+            text-align: right;
+        }
+
+        .header-bar .subject {
+            font-size: 14px;
+            font-weight: bold;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .logo-container img {
+            max-height: 100px;
+            /* Ajuster au besoin */
+            width: auto;
+        }
+
+        .info-section {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 0 20px;
+        }
+
+        .info-block {
+            width: 45%;
+        }
+
+        .date-line {
+            text-align: right;
+            margin-bottom: 5px;
+        }
+
+        /*  Style de table*/
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background-color: #ffb700;
+            color: black;
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ccc;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 8px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+
+        /* Style des cellules modifiables */
+        .editable {
+            background-color: #ffffec;
+            cursor: text;
+        }
+
+        .editable:focus {
+            background-color: #fff;
+            outline: 2px solid #ffb700;
+        }
+
+        /* Footer/Print Button */
+        .controls {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .btn-print {
+            padding: 10px 20px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-print:hover {
+            background-color: #555;
+        }
+
+        /* la requete pour l'impression */
+        @media print {
+            @page {
+                margin: 0;
+                /* Supprime les marges par défaut du navigateur */
+                size: auto;
+            }
+
+            body {
+                padding: 20px;
+                /* Ajouter une marge intérieure car la marge de @page est de 0 */
+                margin: 0;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .header-bar,
+            th {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .controls {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Barre d'en-tête -->
+    <div class="header-bar">
+        <h1>OSEP</h1>
+        <div class="subtitle">
+            Reçu de paiement
+        </div>
+    </div>
+
+    <!-- Section du logo -->
+    <div class="logo-container">
+        <!-- si l'image n'est pas dans le meme répertoire assigner le bon chemin de l'image -->
+        <img src="/public/logo.jpg" alt="Logo OSEP">
+    </div>
+
+    <!-- Section d'information avec date -->
+    <div class="info-section">
+        <div class="info-block">
+        </div>
+        <div class="info-block date-line">
+            <strong>Date :</strong> <span id="currentDate"></span>
+        </div>
+    </div>
+
+    <!-- Attendees Table -->
+    <table>
+        <thead>
+            <tr>
+                <th>Date Enreg.</th>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Structure</th>
+                <th>Téléphone</th>
+                <th>Signature</th>
+                <th>Montant</th>
+                <th>Mode de paiement</th>
+            </tr>
+        </thead>
+        <tbody id="attendeesTableBody">
+            <!-- Les lignes seront remplies par JS -->
+        </tbody>
+    </table>
+
+    <!-- Contrôles -->
+    <div class="controls">
+        <button class="btn-print" onclick="window.print()">Imprimer / Enregistrer en PDF</button>
+    </div>
+
+    <script>
+        // Indique la date actuelle dans l'en-tête.
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('fr-FR');
+
+        let refreshInterval = null;
+        let meetingEndTime = null;
+
+        async function fetchAttendees() {
+            try {
+                // Extract UUID from URL path /m/:uuid/print
+                const pathParts = window.location.pathname.split('/');
+                const uuid = pathParts[2]; // /m/:uuid/print
+
+                if (!uuid) {
+                    throw new Error('UUID de réunion introuvable dans l\'URL');
+                }
+
+                const response = await fetch(`/api/attendees/${uuid}`);
+                if (!response.ok) throw new Error('Erreur réseau');
+
+                const data = await response.json();
+                meetingEndTime = data.meeting?.endTime ? new Date(data.meeting.endTime) : null;
+
+                const attendees = data.attendees || [];
+                const tbody = document.getElementById('attendeesTableBody');
+
+                // Clear existing rows
+                tbody.innerHTML = '';
+
+                attendees.forEach(person => {
+                    const row = document.createElement('tr');
+
+                    // Format créé à la date
+                    const dateObj = new Date(person.created_at);
+                    const formattedDate = dateObj.toLocaleDateString('fr-FR') + ' ' + dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                    row.innerHTML = `
+                        <td>${formattedDate}</td>
+                        <td>${person.nom}</td>
+                        <td>${person.prenom}</td>
+                        <td>${person.structure || '-'}</td>
+                        <td>${person.telephone || '-'}</td>
+                        <td>
+                            ${person.signature ? `<img src="${person.signature}" alt="Signature" style="max-height: 40px; max-width: 100px;">` : '-'}
+                        </td>
+                        <td contenteditable="true" class="editable"></td> <!-- Montant -->
+                        <td contenteditable="true" class="editable"></td> <!-- Mode de Paiement -->
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                // Check if meeting ended, stop refreshing
+                if (meetingEndTime && new Date() > meetingEndTime) {
+                    stopAutoRefresh();
+                }
+
+            } catch (err) {
+                console.error('Erreur:', err);
+                // Don't show alert on every refresh failure, just log
+            }
+        }
+
+        function startAutoRefresh() {
+            // Refresh every 5 seconds
+            refreshInterval = setInterval(fetchAttendees, 5000);
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+                console.log('Auto-refresh arrêté : réunion terminée');
+            }
+        }
+
+        // Initial fetch and start auto-refresh
+        fetchAttendees();
+        startAutoRefresh();
+    </script>
+
+</body>
+
+</html>

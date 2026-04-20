@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset='UTF-8'>
+    <title>Participation - OSEP</title>
+    <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' rel='stylesheet'>
+    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'>
+    <link rel='stylesheet' href='/public/css/theme.css'>
+    <script src='/public/js/theme.js'></script>
+    <script src='/public/js/smart_greeting.js'></script>
+    <link rel='stylesheet' href='/style-dashboard.css'>
+    <style>
+        /* --- DESIGN PREMIUM OSEP : EMERALD / DEEP SEA --- */
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+
+        .btn-primary,
+        .btn-secondary {
+            border-radius: 10px !important;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%) !important;
+            border: none !important;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
+        }
+
+        .card-green {
+            background: linear-gradient(135deg, #10b981 0%, #064e3b 100%) !important;
+            color: white !important;
+        }
+
+        .card-green .kpi-num,
+        .card-green p {
+            color: white !important;
+        }
+
+        .icon-circle {
+            width: 55px;
+            height: 55px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .card-green .icon-circle {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .table th {
+            background: rgba(16, 185, 129, 0.05) !important;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+
+        .filters-bar select,
+        .filters-bar button {
+            height: 45px;
+        }
+    </style>
+</head>
+
+<body>
+    <%- include('partials/' + sidebarFile) %>
+        <main class='main-content'>
+            <header class='top-bar'><button id='openSidebarBtn'><i class='fa-solid fa-bars'></i></button>
+                <div style="flex:1;"></div>
+                <div class='user-area'>
+                    <div class='user-profile'>
+                        <div>
+                            <h4 style="font-size: 0.9rem;" id="userFullName">Admin</h4>
+                            <p style="font-size: 0.75rem; color: #888;">Participation</p>
+                        </div><img id="userAvatar"
+                            src='https://ui-avatars.com/api/?name=AD&background=10b981&color=fff'>
+                    </div>
+                </div>
+            </header>
+            <div class='page-header'>
+                <div>
+                    <h1 id='smartGreeting'>Statistiques de Participation</h1>
+                    <p id='userSubtitle'>Chargement du profil...</p>
+                </div>
+                <!-- BARRE DE FILTRES -->
+                <div class="filters-bar" style="display: flex; gap: 15px; align-items: center;">
+                    <div style="position: relative;">
+                        <select id="filterPeriod" class="form-control"
+                            style="appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 20px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: white; color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.2s ease; outline: none; min-width: 160px;">
+                            <option value="week" selected>Cette Semaine</option>
+                            <option value="month">Ce Mois</option>
+                            <option value="meeting">Par Réunion</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down"
+                            style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #9ca3af; font-size: 0.8rem;"></i>
+                    </div>
+                    <div style="position: relative; display: flex; align-items: center;" id="filterMeetingContainer">
+                        <select id="filterMeeting" class="form-control"
+                            style="appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 20px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: white; color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.2s ease; outline: none; min-width: 180px; display: none;">
+                            <option value="">Chargement...</option>
+                        </select>
+                        <!-- Note: The chevron needs to be toggled along with the select via JS or CSS, but for simplicity we'll let JS handle the display of the select itself. We can wrap it in a container. -->
+                    </div>
+                    <!-- Javascript will toggle #filterMeeting, so we should make sure the chevron is also handled, or add it dynamically. To be safe, let's just style the select. -->
+
+                    <button id="applyFilters" class="btn-dark"
+                        style="padding: 12px 24px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; box-shadow: 0 6px 15px rgba(15, 61, 46, 0.2); transition: transform 0.2s, box-shadow 0.2s; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; cursor: pointer;">
+                        <i class="fa-solid fa-filter" style="margin-right: 8px;"></i> Filtrer
+                    </button>
+                    <button id="exportPDF" class="btn-dark"
+                        style="display:none; padding: 12px 24px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; box-shadow: 0 6px 15px rgba(15, 61, 46, 0.2); transition: transform 0.2s, box-shadow 0.2s; background: #064e3b; color: white; border: none; cursor: pointer;">
+                        <i class="fa-solid fa-file-pdf" style="margin-right: 8px;"></i>
+                    </button>
+                </div>
+            </div>
+
+            <section class='grid-main' style='grid-template-columns: 2fr 1fr;'>
+                <div class="osep-card" style='grid-row: span 2;'>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3>Analyse de participation</h3>
+                    </div>
+                    <div class='chart-box' style='height: 420px;'><canvas id='participationChart'></canvas></div>
+                    <p style='text-align:center; font-size:0.8rem; color:#888; margin-top:10px;'>Données filtrées</p>
+                </div>
+
+                <div class="osep-card" style='flex:1;'>
+                    <h3>Top Assiduité (Global)</h3>
+                    <ul class='item-list' id='topAttendees' style='margin-top:10px;'>
+                        <li>Chargement...</li>
+                    </ul>
+                </div>
+            </section>
+
+            <!-- SECTION DU TABLEAU DES PARTICIPANTS -->
+            <section style="margin-top: 20px;">
+                <div class="osep-card">
+                    <h3>Détail des Participants</h3>
+                    <div id="loading-spinner" style="display:none; text-align:center; padding:20px;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--primary);"></i>
+                        <p>Chargement des données...</p>
+                    </div>
+                    <div id="no-data-message" style="display:none; text-align:center; padding:20px; color:#888;">
+                        <img src="https://cdni.iconscout.com/illustration/premium/thumb/empty-state-2130362-1800926.png"
+                            alt="Vide" style="height:100px; opacity:0.5;">
+                        <p>Aucun participant trouvé pour cette période.</p>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="table" id="participants-table"
+                            style="width:100%; border-collapse:collapse; display:none;">
+                            <thead>
+                                <tr style="background:#f9fafb; border-bottom:2px solid #eee;">
+                                    <th style="padding:12px; text-align:left;">Date Inscription</th>
+                                    <th style="padding:12px; text-align:left;">Nom Prénom</th>
+                                    <th style="padding:12px; text-align:left;">Fonction / Structure</th>
+                                    <th style="padding:12px; text-align:left;">Réunion</th>
+                                    <th style="padding:12px; text-align:center;">Émargement</th>
+                                </tr>
+                            </thead>
+                            <tbody id="participants-body">
+                                <!-- Lignes injectées par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+        <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
+        <!-- jsPDF Libraries -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+        <script
+            src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+        <script src='/public/js/utils.js'></script>
+        <script src='/public/js/profile-dropdown.js?v=2'></script>
+        <script src='/public/js/script-participation.js'></script>
+</body>
+
+</html>

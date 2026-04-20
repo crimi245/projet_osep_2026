@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle Coordination - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="style-dashboard.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <style>
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #f9fafb;
+            transition: 0.3s;
+            outline: none;
+            color: #1f2937;
+        }
+
+        input:focus {
+            border-color: var(--primary-dark);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(15, 61, 46, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 20px;
+        }
+
+        /* Styles pour la gestion des équipes et membres */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #111827;
+            margin: 30px 0 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .team-container {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: #fdfdfd;
+        }
+
+        .team-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .member-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 5px;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .btn-icon:hover {
+            color: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 1px solid #e5e7eb;
+            background: white;
+            transition: 0.2s;
+        }
+
+        .btn-small:hover {
+            background: #f9fafb;
+        }
+    </style>
+</head>
+
+<body>
+    <%- include('partials/' + sidebarFile) %>
+        <main class="main-content">
+
+            <header class="top-bar">
+                <div class="search-bar" style="opacity:0;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4>Admin</h4>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=Admin&background=0f3d2e&color=fff">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header" style="margin-bottom: 20px;">
+                <div>
+                    <h1>Nouvelle Coordination</h1>
+                    <p>Création d'une nouvelle unité organisationnelle.</p>
+                </div>
+            </div>
+
+            <section class="form-card">
+                <form id="createCoordForm" onsubmit="handleCreation(event)">
+
+                    <div class="form-group">
+                        <label>Nom de la Coordination</label>
+                        <input type="text" id="coordName" placeholder="Ex: Direction Marketing" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sigle de la Coordination (10 caractères max)</label>
+                        <input type="text" id="coordSigle" placeholder="Ex: DM" maxlength="10" style="text-transform: uppercase;" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Chef de Coordination</label>
+                        <input type="text" id="coordHead" placeholder="Ex: Marie Curie" required>
+                    </div>
+
+                    <div class="section-title">
+                        <span>Équipes & Hiérarchie</span>
+                        <button type="button" class="btn-small" onclick="addTeam()">
+                            <i class="fa-solid fa-plus"></i> Ajouter une équipe
+                        </button>
+                    </div>
+
+                    <div id="teamsList">
+                        <!-- Les équipes seront ajoutées ici -->
+                    </div>
+
+                    <div class="section-title">
+                        <span>Membres Indépendants</span>
+                        <button type="button" class="btn-small" onclick="addIndependentMember()">
+                            <i class="fa-solid fa-plus"></i> Ajouter
+                        </button>
+                    </div>
+
+                    <div id="independentMembersList">
+                        <!-- Les membres indépendants seront ajoutés ici -->
+                    </div>
+
+
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-light"
+                            onclick="window.location.href='/coordination'">Annuler</button>
+                        <button type="submit" class="btn-dark">
+                            <i class="fa-solid fa-check"></i> Créer la Coordination
+                        </button>
+                    </div>
+
+                </form>
+            </section>
+
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <!-- Le JS du thème a été déplacé dans le head -->
+        <script>
+            function addTeam() {
+                const container = document.getElementById('teamsList');
+                const teamId = Date.now();
+                const teamHtml = `
+                    <div class="team-container" id="team-${teamId}">
+                        <div class="team-header">
+                            <input type="text" placeholder="Nom de l'équipe (ex: Communication)" class="team-name" required>
+                            <button type="button" class="btn-icon" onclick="removeElement('team-${teamId}')">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="members-list" id="members-${teamId}">
+                            <!-- Membres de l'équipe -->
+                        </div>
+                        <button type="button" class="btn-small" onclick="addMemberToTeam('${teamId}')">
+                            <i class="fa-solid fa-user-plus"></i> Ajouter un membre
+                        </button>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', teamHtml);
+            }
+
+            function addMemberToTeam(teamId) {
+                const container = document.getElementById(`members-${teamId}`);
+                const memberId = Date.now();
+                const memberHtml = `
+                    <div class="member-row" id="member-${memberId}">
+                        <input type="text" placeholder="Prénom Nom" class="member-name" required>
+                        <input type="text" placeholder="Rôle/Fonction" class="member-role">
+                        <button type="button" class="btn-icon" onclick="removeElement('member-${memberId}')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', memberHtml);
+            }
+
+            function addIndependentMember() {
+                const container = document.getElementById('independentMembersList');
+                const memberId = Date.now();
+                const memberHtml = `
+                    <div class="member-row" id="member-${memberId}">
+                        <input type="text" placeholder="Prénom Nom" class="indep-member-name" required>
+                        <input type="text" placeholder="Rôle/Fonction" class="indep-member-role">
+                        <button type="button" class="btn-icon" onclick="removeElement('member-${memberId}')">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', memberHtml);
+            }
+
+            function removeElement(id) {
+                document.getElementById(id).remove();
+            }
+
+            async function handleCreation(e) {
+                e.preventDefault();
+                const name = document.getElementById('coordName').value;
+                const sigle = document.getElementById('coordSigle').value.toUpperCase();
+                const head = document.getElementById('coordHead').value;
+
+                // Collecter les équipes et membres
+                const teams = [];
+                document.querySelectorAll('.team-container').forEach(teamNode => {
+                    const teamName = teamNode.querySelector('.team-name').value;
+                    const members = [];
+                    teamNode.querySelectorAll('.members-list .member-row').forEach(memberNode => {
+                        members.push({
+                            name: memberNode.querySelector('.member-name').value,
+                            role: memberNode.querySelector('.member-role').value
+                        });
+                    });
+                    teams.push({ name: teamName, members });
+                });
+
+                // Collecter les membres indépendants
+                const independent_members = [];
+                document.querySelectorAll('#independentMembersList .member-row').forEach(memberNode => {
+                    independent_members.push({
+                        name: memberNode.querySelector('.indep-member-name').value,
+                        role: memberNode.querySelector('.indep-member-role').value
+                    });
+                });
+
+                try {
+                    const res = await fetch('/api/coordinations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            name, 
+                            sigle_coordination: sigle, 
+                            head,
+                            teams,
+                            independent_members
+                        })
+                    });
+
+                    if (res.ok) {
+                        sessionStorage.removeItem('osep_coords_cache');
+                        sessionStorage.removeItem('osep_coords_stats_cache');
+                        sessionStorage.removeItem('osep_coords_time');
+                        showToast("Coordination créée avec succès !", 'success');
+                        window.location.href = '/coordination';
+                    } else {
+                        const data = await res.json();
+                        showToast(data.error || "Erreur lors de la création.", 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast("Erreur réseau", 'error');
+                }
+            }
+
+            // Déconnexion
+            window.logout = async function () {
+                if (confirm("Se déconnecter ?")) {
+                    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) { }
+                    window.location.href = '/login?logout=success';
+                }
+            };
+        </script>
+</body>
+
+</html>

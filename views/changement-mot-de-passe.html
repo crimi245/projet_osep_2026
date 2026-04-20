@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Changement de mot de passe - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <style>
+        .password-container {
+            max-width: 500px;
+            margin: 40px auto;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 61, 46, 0.1);
+        }
+        .strength-meter {
+            height: 4px;
+            background: #e5e7eb;
+            margin-top: 8px;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .strength-bar {
+            height: 100%;
+            width: 0;
+            transition: width 0.3s, background-color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <%- include('partials/' + sidebarFile) %>
+
+    <main class="main-content">
+        <header class="top-bar">
+            <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+            <div style="flex:1;"></div>
+            <div class="user-area">
+                <div class="user-profile">
+                    <div>
+                        <h4 id="userName"><%= user.fullname || user.username %></h4>
+                        <p style="font-size: 0.75rem; color: #888;">Sécurité du compte</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-header">
+            <div>
+                <h1>Changement de Mot de Passe</h1>
+                <p>Renforcez la sécurité de votre compte en mettant à jour votre mot de passe régulièrement.</p>
+            </div>
+        </div>
+
+        <div class="password-container">
+            <div class="card">
+                <form id="changePasswordForm">
+                    <div class="form-group">
+                        <label for="currentPassword">Mot de passe actuel</label>
+                        <input type="password" id="currentPassword" required placeholder="••••••••">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newPassword">Nouveau mot de passe</label>
+                        <input type="password" id="newPassword" required placeholder="••••••••" oninput="checkStrength(this.value)">
+                        <div class="strength-meter">
+                            <div id="strengthBar" class="strength-bar"></div>
+                        </div>
+                        <p id="strengthText" style="font-size: 0.75rem; margin-top: 5px; color: #6b7280;">Force : -</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirmPassword">Confirmer le nouveau mot de passe</label>
+                        <input type="password" id="confirmPassword" required placeholder="••••••••">
+                    </div>
+
+                    <div style="margin-top: 30px;">
+                        <button type="submit" class="btn-dark" style="width: 100%; padding: 14px;">
+                            Mettre à jour le mot de passe
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/public/js/utils.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <script>
+        function checkStrength(password) {
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+            let strength = 0;
+            
+            if (password.length > 6) strength += 20;
+            if (password.length > 10) strength += 20;
+            if (/[A-Z]/.test(password)) strength += 20;
+            if (/[0-9]/.test(password)) strength += 20;
+            if (/[^A-Za-z0-9]/.test(password)) strength += 20;
+
+            bar.style.width = strength + '%';
+            
+            if (strength <= 40) {
+                bar.style.backgroundColor = '#ef4444';
+                text.innerText = 'Force : Faible';
+            } else if (strength <= 80) {
+                bar.style.backgroundColor = '#eab308';
+                text.innerText = 'Force : Moyenne';
+            } else {
+                bar.style.backgroundColor = '#22c55e';
+                text.innerText = 'Force : Forte';
+            }
+        }
+
+        document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (newPassword !== confirmPassword) {
+                showToast('Les nouveaux mots de passe ne correspondent pas', 'error');
+                return;
+            }
+
+            if (newPassword.length < 8) {
+                showToast('Le nouveau mot de passe doit faire au moins 8 caractères', 'warning');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/user/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Mot de passe mis à jour avec succès !', 'success');
+                    document.getElementById('changePasswordForm').reset();
+                    checkStrength('');
+                } else {
+                    showToast(data.error || 'Une erreur est survenue', 'error');
+                }
+            } catch (err) {
+                showToast('Erreur réseau', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

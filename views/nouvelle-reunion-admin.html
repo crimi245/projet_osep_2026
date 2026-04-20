@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nouvelle Réunion (Admin) - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+
+    <!-- Leaflet JS pour la Carte Interactive -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <style>
+        .form-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9rem;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            background: #f9fafb;
+            transition: 0.3s;
+            outline: none;
+            color: #1f2937;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            border-color: var(--primary-dark);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(15, 61, 46, 0.1);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+            border-top: 1px solid #f3f4f6;
+            padding-top: 20px;
+        }
+
+        .map-picker-container {
+            margin-bottom: 25px;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f9fafb;
+            padding: 15px;
+        }
+
+        .search-geo-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .search-geo-container input {
+            flex: 1;
+        }
+
+        .search-geo-container button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .search-geo-container button:hover {
+            background: var(--primary-dark);
+        }
+
+        #pickerMap {
+            width: 100%;
+            height: 350px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+        }
+
+        .geo-toggle-container {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f0fdf4;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #bbf7d0;
+            cursor: pointer;
+        }
+
+        .geo-toggle-container input {
+            width: auto;
+            cursor: pointer;
+        }
+
+        .geo-toggle-label {
+            font-size: 0.9rem;
+            color: #166534;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        #mapSection {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+
+            <header class="top-bar">
+                <button class="menu-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar" style="opacity:0;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="userFullName">Admin</h4>
+                        </div>
+                        <img src="https://ui-avatars.com/api/?name=Admin&background=0f3d2e&color=fff">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header" style="margin-bottom: 20px;">
+                <div>
+                    <a href="/calendar" class="btn-back"
+                        style="text-decoration: none; color: var(--primary); font-size: 0.9rem; margin-bottom: 10px; display: inline-block;">
+                        <i class="fa-solid fa-arrow-left"></i> Retour au calendrier
+                    </a>
+                    <h1>Nouvelle Réunion (Admin)</h1>
+                    <p>Création centralisée avec assignation de coordination.</p>
+                </div>
+            </div>
+
+            <section class="form-card">
+                <form id="createMeetingForm" onsubmit="handleCreation(event)">
+
+                    <div class="form-group">
+                        <label>Coordination <span style="color:var(--primary)">*</span></label>
+                        <select id="coordinationSelect" name="coordination_id" required>
+                            <option value="" disabled selected>Chargement des coordinations...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sujet de la réunion</label>
+                        <input type="text" name="subject" placeholder="Ex: Revue Budgétaire Q1" required>
+                    </div>
+
+                    <!-- Champs spécifiques à l'administrateur supprimés -->
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" name="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Heure de début</label>
+                            <input type="time" name="time" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Heure de fin</label>
+                            <input type="time" name="end_time" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Lieu / Salle</label>
+                            <select name="location">
+                                <option>Salle de Conférence ANNE DESIREE OULOTTO</option>
+                                <option>Bureau du Sécrétaire Permanent</option>
+                                <option>Extérieur</option>
+                                <option>Visio Conférence</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type de Réunion</label>
+                            <select name="meeting_category" id="meetingTypeSelect">
+                                <option value="ccms">Comité CCMS</option>
+                                <option value="partenaire_externe">Partenaire externe</option>
+                                <option value="codir">CODIR</option>
+                                <option value="codire">CODIRE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- NOUVEAU: INCIDENCE FINANCIÈRE (Affiché si Partenaire Externe) -->
+                    <div id="financialImpactContainer" style="display: none; margin-bottom: 25px; background: #fffbeb; padding: 15px; border-radius: 10px; border: 1px solid #fef3c7;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="financialImpactCheckbox" style="width: auto; cursor: pointer;">
+                            <label for="financialImpactCheckbox" style="margin-bottom: 0; color: #92400e; cursor: pointer;">
+                                <i class="fa-solid fa-coins"></i> Réunion à incidence financière (Validation Staff)
+                            </label>
+                        </div>
+                    </div>
+                    </div>
+
+                    <!-- NOUVEAU: GÉOREPÉRAGE INTERACTIF (HABILLÉ & CACHÉ PAR DÉFAUT) -->
+                    <div class="geo-toggle-container" onclick="toggleGeoMap()">
+                        <input type="checkbox" id="enableGeoCustom">
+                        <label class="geo-toggle-label">Activer une zone de géorepérage personnalisée (Autre que
+                            OSEP)</label>
+                    </div>
+
+                    <div class="map-picker-container" id="mapSection">
+                        <label><i class="fa-solid fa-map-location-dot"></i> Définir la Zone de Géorepérage SIEM</label>
+                        <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 10px;">
+                            Recherchez un lieu ou déplacez le marqueur sur la carte pour définir précisément
+                            l'emplacement de la réunion.
+                        </p>
+
+                        <div class="search-geo-container">
+                            <input type="text" id="geoSearchInput"
+                                placeholder="Ex: Sofitel Abidjan Hotel Ivoire, Cocody">
+                            <button type="button" onclick="searchLocation()"><i
+                                    class="fa-solid fa-magnifying-glass"></i> Rechercher</button>
+                        </div>
+
+                        <div id="pickerMap"></div>
+
+                        <div class="form-row" style="margin-top: 15px;">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 0.8rem;">Latitude</label>
+                                <input type="number" step="any" name="geo_lat" id="geo_lat" placeholder="Ex: 5.380328"
+                                    value="5.380328" oninput="updateMapFromInputs()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 0.8rem;">Longitude</label>
+                                <input type="number" step="any" name="geo_lon" id="geo_lon" placeholder="Ex: -3.986982"
+                                    value="-3.986982" oninput="updateMapFromInputs()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="font-size: 0.8rem;">Rayon (m)</label>
+                                <input type="number" name="geo_radius" id="geo_radius" placeholder="1000" value="1000"
+                                    oninput="updateRadiusFromInput()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ordre du jour</label>
+                        <textarea name="description" rows="4" placeholder="Points clés à aborder..."></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-light" onclick="window.history.back()">Annuler</button>
+                        <button type="submit" class="btn-dark">
+                            <i class="fa-solid fa-check"></i> Créer la réunion
+                        </button>
+                    </div>
+
+                </form>
+            </section>
+
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <script src="/public/js/profile-dropdown.js"></script>
+        <script>
+            function toggleSidebar() {
+                document.getElementById('sidebar').classList.toggle('collapsed');
+                document.querySelector('.main-content').classList.toggle('expanded');
+            }
+            document.addEventListener('DOMContentLoaded', async () => {
+                // Focus sur le titre
+                const subject = document.querySelector('input[name="subject"]');
+                if (subject) subject.focus();
+
+                initPickerMap();
+
+                // Charger l'utilisateur et les coordinations
+                try {
+                    const [uRes, cRes] = await Promise.all([
+                        fetch('/api/user/me'),
+                        fetch('/api/coordinations')
+                    ]);
+
+                    let currentUser = null;
+                    if (uRes.ok) {
+                        currentUser = await uRes.json();
+                        document.getElementById('userFullName').innerText = currentUser.fullname || currentUser.username;
+                    }
+
+                    if (cRes.ok) {
+                        const coords = await cRes.json();
+                        const sel = document.getElementById('coordinationSelect');
+                        sel.innerHTML = '<option value="" disabled>Choisir une coordination...</option>';
+
+                        coords.forEach(c => {
+                            const opt = document.createElement('option');
+                            opt.value = c.id;
+                            opt.textContent = c.name;
+                            sel.appendChild(opt);
+                        });
+
+                        // Auto-sélection par défaut (user profile)
+                        if (currentUser && currentUser.coordination_id) {
+                            sel.value = currentUser.coordination_id;
+                            // Ne pas donner la main pour changer (Verrouillage)
+                            if (currentUser.role !== 'super_admin') {
+                                sel.disabled = true;
+                                sel.title = "Vous ne pouvez pas changer votre coordination rattachée.";
+                            }
+                        }
+
+                        // Priorité à l'URL si présent (Si super_admin, peut changer)
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const coordParam = urlParams.get('coordination_id');
+                        if (coordParam) {
+                            sel.value = coordParam;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erreur chargement données initiales', err);
+                }
+
+                // Date minimale (Aujourd'hui)
+                const dateInput = document.querySelector('input[name="date"]');
+                if (dateInput) {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    dateInput.min = todayStr;
+                }
+
+                // Validation API des types de la matrice des droits
+                try {
+                    const res = await fetch('/api/user-permissions');
+                    if (res.ok) {
+                        const data = await res.json();
+                        const allowedTypes = data.allowed_meeting_types || [];
+                        const select = document.getElementById('meetingTypeSelect');
+
+                        if (select) {
+                            // On parcourt les options à l'envers pour pouvoir les supprimer facilement
+                            for (let i = select.options.length - 1; i >= 0; i--) {
+                                const option = select.options[i];
+                                if (!allowedTypes.includes(option.value)) {
+                                    select.remove(i);
+                                }
+                            }
+
+                            // Auto-sélection par l'URL si permis
+                            const params = new URLSearchParams(window.location.search);
+                            const typeParam = params.get('type');
+                            if (typeParam && allowedTypes.includes(typeParam)) {
+                                select.value = typeParam;
+                                
+                                // Griser l'option CCMS si l'utilisateur est de CCOM ou SP
+                                const coordName = data.user_coordination || '';
+                                const sigle = data.user_sigle || '';
+                                const isSP = sigle === 'SP' || coordName === 'SP' || coordName === 'Direction' || coordName === 'Cabinet du SP';
+                                const isCCOM = sigle === 'CCOM' || coordName === 'CCRPMR' || coordName === 'CCOM';
+                                const isCGEN = sigle === 'CGEN' || coordName === 'CGEN' || coordName.includes('GENERALE');
+                                
+                                // Verrouillage CCMS pour SP/CCOM
+                                if (typeParam === 'ccms' && (isSP || isCCOM) && data.user_role !== 'super_admin') {
+                                    select.disabled = true;
+                                    select.style.backgroundColor = '#e5e7eb';
+                                    select.style.cursor = 'not-allowed';
+                                    
+                                    const hiddenInput = document.createElement('input');
+                                    hiddenInput.type = 'hidden';
+                                    hiddenInput.name = 'meeting_category';
+                                    hiddenInput.value = 'ccms';
+                                    select.parentNode.appendChild(hiddenInput);
+                                }
+                                
+                                // Verrouillage CODIR pour CGEN
+                                if (typeParam === 'codir' && isCGEN && data.user_role !== 'super_admin') {
+                                    select.disabled = true;
+                                    select.style.backgroundColor = '#e5e7eb';
+                                    select.style.cursor = 'not-allowed';
+                                    
+                                    const hiddenInput = document.createElement('input');
+                                    hiddenInput.type = 'hidden';
+                                    hiddenInput.name = 'meeting_category';
+                                    hiddenInput.value = 'codir';
+                                    select.parentNode.appendChild(hiddenInput);
+                                }
+
+                                // Verrouillage Partenaire Externe pour SP/CGEN/Admin
+                                if (typeParam === 'partenaire_externe') {
+                                    // Afficher le bloc financier immédiatement car le 'change' ne sera pas déclenché manuellement
+                                    const financeContainer = document.getElementById('financialImpactContainer');
+                                    if (financeContainer) financeContainer.style.display = 'block';
+                                    
+                                    if (data.user_role !== 'super_admin') {
+                                        select.disabled = true;
+                                        select.style.backgroundColor = '#e5e7eb';
+                                        select.style.cursor = 'not-allowed';
+                                        
+                                        const hiddenInput = document.createElement('input');
+                                        hiddenInput.type = 'hidden';
+                                        hiddenInput.name = 'meeting_category';
+                                        hiddenInput.value = 'partenaire_externe';
+                                        select.parentNode.appendChild(hiddenInput);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error('Erreur chargement permissions', err);
+                }
+
+
+                // Gestion de l'affichage de la case "Incidence financière"
+                const typeSelect = document.getElementById('meetingTypeSelect');
+                const financeContainer = document.getElementById('financialImpactContainer');
+                if (typeSelect && financeContainer) {
+                    typeSelect.addEventListener('change', () => {
+                        if (typeSelect.value === 'partenaire_externe') {
+                            financeContainer.style.display = 'block';
+                        } else {
+                            financeContainer.style.display = 'none';
+                            document.getElementById('financialImpactCheckbox').checked = false;
+                        }
+                    });
+                }
+            });
+
+            function toggleGeoMap() {
+                const checkbox = document.getElementById('enableGeoCustom');
+                const mapSection = document.getElementById('mapSection');
+
+                // Si on a cliqué sur le conteneur mais pas sur la checkbox elle-même, on inverse
+                if (event.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                }
+
+                if (checkbox.checked) {
+                    mapSection.style.display = 'block';
+                    // Correction Leaflet: Recalculer la taille car le div était caché
+                    if (pickerMap) {
+                        setTimeout(() => {
+                            pickerMap.invalidateSize();
+                        }, 100);
+                    }
+                } else {
+                    mapSection.style.display = 'none';
+                    // Optionnel: Réinitialiser aux coordonnées OSEP si on décoche
+                    resetToOSEP();
+                }
+            }
+
+            function resetToOSEP() {
+                const osepLat = 5.380328;
+                const osepLon = -3.986982;
+                document.getElementById('geo_lat').value = osepLat;
+                document.getElementById('geo_lon').value = osepLon;
+                if (pickerMap) {
+                    marker.setLatLng([osepLat, osepLon]);
+                    circle.setLatLng([osepLat, osepLon]);
+                    pickerMap.setView([osepLat, osepLon], 16);
+                }
+            }
+
+            // ==========================================
+            // LOGIQUE DE LA CARTE INTERACTIVE
+            // ==========================================
+            let pickerMap, marker, circle;
+
+            function initPickerMap() {
+                // Par défaut: OSEP (Coordonnées exactes)
+                const defaultLat = 5.380328;
+                const defaultLon = -3.986982;
+                const defaultRadius = 1000;
+
+                pickerMap = L.map('pickerMap').setView([defaultLat, defaultLon], 13);
+
+                // Plan Classique (CARTO Voyager)
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19, attribution: '&copy; CARTO'
+                }).addTo(pickerMap);
+
+                // Optionnel: Double tuile pour switcher plan/satellite
+                /*
+                const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom: 19, attribution: 'Tiles &copy; Esri'});
+                L.control.layers({"Plan": pickerMap.options.layers[0], "Satellite": satLayer}).addTo(pickerMap);
+                */
+
+                marker = L.marker([defaultLat, defaultLon], { draggable: true }).addTo(pickerMap);
+                circle = L.circle([defaultLat, defaultLon], {
+                    color: '#10b981',
+                    fillColor: '#34d399',
+                    fillOpacity: 0.2,
+                    radius: defaultRadius
+                }).addTo(pickerMap);
+
+                // Mettre à jour les inputs lorsqu'on déplace le marqueur
+                marker.on('dragend', function (e) {
+                    const pos = marker.getLatLng();
+                    updateInputs(pos.lat, pos.lng);
+                    circle.setLatLng(pos);
+                });
+
+                // Déplacer le marqueur au clic sur la carte
+                pickerMap.on('click', function (e) {
+                    marker.setLatLng(e.latlng);
+                    circle.setLatLng(e.latlng);
+                    updateInputs(e.latlng.lat, e.latlng.lng);
+                });
+
+                // Si les champs étaient déjà remplis, on synchronise (en cas de rechargement/back button)
+                updateMapFromInputs();
+            }
+
+            function updateInputs(lat, lon) {
+                document.getElementById('geo_lat').value = lat.toFixed(6);
+                document.getElementById('geo_lon').value = lon.toFixed(6);
+            }
+
+            function updateMapFromInputs() {
+                if (!pickerMap) return;
+                const lat = parseFloat(document.getElementById('geo_lat').value);
+                const lon = parseFloat(document.getElementById('geo_lon').value);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    const newLatLng = new L.LatLng(lat, lon);
+                    marker.setLatLng(newLatLng);
+                    circle.setLatLng(newLatLng);
+                    pickerMap.setView(newLatLng);
+                }
+            }
+
+            function updateRadiusFromInput() {
+                if (!circle) return;
+                const radius = parseFloat(document.getElementById('geo_radius').value);
+                if (!isNaN(radius) && radius > 0) {
+                    circle.setRadius(radius);
+                    // On adapte le zoom de la carte pour tout englober si le rayon est énorme
+                    pickerMap.fitBounds(circle.getBounds(), { padding: [20, 20], maxZoom: 16 });
+                }
+            }
+
+            async function searchLocation() {
+                const searchTxt = document.getElementById('geoSearchInput').value.trim();
+                if (!searchTxt) return;
+
+                const searchLower = searchTxt.toLowerCase();
+
+                // Gestion du cas spécifique OSEP demandé par l'utilisateur
+                if (searchLower.includes("observatoire du service public") || searchLower === "osep" || searchLower.includes("osep abidjan")) {
+                    const osepLat = 5.380328;
+                    const osepLon = -3.986982;
+                    const newPos = new L.LatLng(osepLat, osepLon);
+                    pickerMap.setView(newPos, 16);
+                    marker.setLatLng(newPos);
+                    circle.setLatLng(newPos);
+                    updateInputs(osepLat, osepLon);
+                    showToast(`Lieu trouvé (Exact) : OSEP`, 'success');
+                    return;
+                }
+
+                // Astuce: On rajoute Côte d'Ivoire par défaut si ce n'est pas précisé
+                const query = searchLower.includes("côte d'ivoire") || searchLower.includes("cote d'ivoire") || searchLower.includes("abidjan")
+                    ? searchTxt
+                    : `${searchTxt}, Abidjan, Côte d'Ivoire`;
+
+                try {
+                    const btn = document.querySelector('.search-geo-container button');
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+
+                    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                    const data = await res.json();
+
+                    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> Rechercher';
+
+                    if (data && data.length > 0) {
+                        const lat = parseFloat(data[0].lat);
+                        const lon = parseFloat(data[0].lon);
+
+                        const newPos = new L.LatLng(lat, lon);
+                        pickerMap.setView(newPos, 16);
+                        marker.setLatLng(newPos);
+                        circle.setLatLng(newPos);
+                        updateInputs(lat, lon);
+                        showToast(`Lieu trouvé : ${data[0].display_name}`, 'success');
+                    } else {
+                        showToast("Aucun lieu trouvé pour cette recherche.", 'warning');
+                    }
+                } catch (e) {
+                    console.error("Erreur de recherche", e);
+                    showToast("Erreur lors de la recherche du lieu.", 'error');
+                }
+            }
+
+            // Permet de soumettre en tapant "Entrée" dans la barre de recherche
+            document.getElementById('geoSearchInput').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    searchLocation();
+                }
+            });
+
+            async function handleCreation(e) {
+                e.preventDefault();
+                const form = e.target;
+                const formData = new FormData(form);
+
+                // Construire l'objet JSON
+                const data = {
+                    title: formData.get('subject'),
+                    date: formData.get('date'),
+                    time: formData.get('time'),
+                    end_time: formData.get('end_time'),
+                    location: formData.get('location'),
+                    meeting_category: formData.get('meeting_category'),
+                    description: formData.get('description'),
+                    geo_lat: formData.get('geo_lat'),
+                    geo_lon: formData.get('geo_lon'),
+                    geo_radius: formData.get('geo_radius')
+                };
+
+                // Gestion de l'heure
+                const startDateTime = new Date(`${data.date}T${data.time}:00`);
+                const endDateTime = new Date(`${data.date}T${data.end_time}:00`);
+
+                // URL Params & Form Data
+                const coordinationId = document.getElementById('coordinationSelect').value;
+
+                // Vérification Date/Heure (Pas dans le passé)
+                const now = new Date();
+                if (startDateTime < now) {
+                    showToast("Impossible de planifier une réunion dans le passé !", 'warning');
+                    return;
+                }
+
+                if (endDateTime <= startDateTime) {
+                    showToast("L'heure de fin doit être après l'heure de début !", 'warning');
+                    return;
+                }
+
+                // Données de la requête
+                const payload = {
+                    title: data.title,
+                    start_time: startDateTime.toISOString(),
+                    end_time: endDateTime.toISOString(),
+                    description: data.description,
+                    color: '#3788d8',
+                    location: data.location,
+                    meeting_type: data.meeting_category, // On utilise la catégorie du formulaire
+                    meeting_category: data.meeting_category, // Maintenu par compatibilité
+                    coordination_id: coordinationId,
+                    geo_lat: data.geo_lat ? parseFloat(data.geo_lat) : null,
+                    geo_lon: data.geo_lon ? parseFloat(data.geo_lon) : null,
+                    geo_radius: data.geo_radius ? parseInt(data.geo_radius) : 1000,
+                    financial_impact: document.getElementById('financialImpactCheckbox').checked
+                };
+
+                try {
+                    const res = await fetch('/api/meetings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (res.ok) {
+                        const data = await res.json();
+                        showToast("Réunion créée avec succès (Admin) !", 'success');
+                        // Rediriger vers le tableau de bord avec les paramètres pour afficher le QR immédiatement
+                        window.location.href = `/dashboard?new_meeting_uuid=${data.uuid}&new_meeting_link=${encodeURIComponent(data.link)}&new_meeting_title=${encodeURIComponent(data.title || 'Nouvelle Réunion')}`;
+                    } else {
+                        const err = await res.json();
+                        showToast("Erreur: " + err.error, 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast("Erreur réseau", 'error');
+                }
+            }
+        </script>
+</body>
+
+</html>

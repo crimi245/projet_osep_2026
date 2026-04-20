@@ -1,0 +1,389 @@
+:root {
+    /* Variables layout spécifiques (les couleurs viennent de theme.css) */
+    --radius: 20px;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-body, #f4f5f7);
+    color: var(--text-main, #111827);
+    display: flex;
+    min-height: 100vh;
+}
+
+/* --- MAIN CONTENT --- */
+.main-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Header */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+}
+
+.search-bar {
+    background: var(--card-bg, white);
+    padding: 10px 20px;
+    border-radius: 50px;
+    width: 400px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+}
+
+.search-bar input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 0.9rem;
+    background: transparent;
+}
+
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.user-profile {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-align: right;
+}
+
+.user-profile img {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons */
+.btn-dark {
+    background: var(--primary);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    transition: 0.2s;
+}
+
+.btn-dark:hover {
+    background: var(--primary-dark);
+}
+
+.btn-light {
+    background: white;
+    border: 1px solid #e5e7eb;
+    padding: 10px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+/* Cards & Grid */
+.grid-kpi {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+}
+
+.grid-main {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 24px;
+}
+
+.card {
+    background: var(--bg-panel, white);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    position: relative;
+}
+
+.card-green {
+    background: var(--primary);
+    color: white;
+}
+
+.card-green p {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.icon-circle {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 0.8rem;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+.icon-circle.dark {
+    background: transparent;
+    border: 1px solid #e5e7eb;
+    color: var(--text-main);
+}
+
+.kpi-num {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin: 10px 0;
+}
+
+.badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-right: 5px;
+}
+
+.badge-green {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.badge-gray {
+    background: #f3f4f6;
+    color: var(--text-muted);
+}
+
+/* Timer Card */
+.timer-card {
+    background: #051910;
+    color: white;
+    overflow: hidden;
+    position: relative;
+    border: 1px solid #1f2937;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.timer-bg {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0px, rgba(255, 255, 255, 0.03) 2px, transparent 2px, transparent 10px);
+}
+
+.timer-digits {
+    font-size: 2.8rem;
+    font-weight: 700;
+    z-index: 2;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 2px;
+}
+
+.timer-actions {
+    z-index: 2;
+    margin-top: 15px;
+    display: flex;
+    gap: 15px;
+}
+
+.btn-circle {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+    color: var(--primary);
+}
+
+.btn-circle:hover {
+    transform: scale(1.1);
+}
+
+/* Utils */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.page-header h1 {
+    font-size: 1.8rem;
+    margin-bottom: 5px;
+}
+
+.page-header p {
+    color: var(--text-muted);
+}
+
+/* Listes */
+.item-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #f3f4f6;
+    padding-bottom: 10px;
+}
+
+.item-list li:last-child {
+    border: none;
+    margin: 0;
+    padding: 0;
+}
+
+.item-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.blue-bg {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.orange-bg {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.green-bg {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+/* Chart Containers */
+.chart-box {
+    height: 180px;
+    position: relative;
+    width: 100%;
+}
+
+.donut-box {
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    position: relative;
+}
+
+/* Sidebar Toggle */
+.sidebar.closed {
+    width: 0;
+    padding: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+
+.menu-toggle-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    margin-right: 15px;
+    padding: 5px;
+    border-radius: 5px;
+    display: none;
+}
+
+.menu-toggle-btn:hover {
+    background: #e5e7eb;
+    color: var(--primary);
+}
+
+/* Standardized Floating Open Button */
+#openSidebarBtn {
+    /* Removed fixed position to sit in flow */
+    margin-right: 15px;
+    z-index: 1000;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    padding: 10px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    display: none;
+    /* Controlled by JS */
+    transition: all 0.2s;
+}
+
+#openSidebarBtn:hover {
+    color: var(--primary);
+    transform: scale(1.05);
+}
+
+/* Running Meetings Timer Styles */
+.running-meeting-item:last-child {
+    border-bottom: none !important;
+}
+
+.running-meeting-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    transition: all 0.2s;
+}
+
+#runningMeetingsContainer {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+#runningMeetingsContainer::-webkit-scrollbar {
+    width: 6px;
+}
+
+#runningMeetingsContainer::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#runningMeetingsContainer::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+#runningMeetingsContainer::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.3);
+}

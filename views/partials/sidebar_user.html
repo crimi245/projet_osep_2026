@@ -1,0 +1,40 @@
+<aside class="sidebar" id="sidebar">
+    <div>
+        <div class="logo" onclick="toggleSidebar()"><i class="fa-solid fa-layer-group"></i> OSEP
+            <span>Utilisateur</span>
+        </div>
+        <nav class="menu">
+            <ul>
+                <li><a href="/user"><i class="fa-solid fa-house-user"></i> Mon Espace</a></li>
+                <li><a href="/participation_ut"><i class="fa-solid fa-users-viewfinder"></i> Mes Statistiques</a>
+                </li>
+                <li><a href="/user/calendar"><i class="fa-regular fa-calendar"></i> Calendrier</a></li>
+                <li class="active"><a href="/new-meeting-user"><i class="fa-solid fa-plus-circle"></i> Nouvelle
+                        Réunion</a></li>
+                <li><a href="/links"><i class="fa-solid fa-link"></i> Liens & QR</a></li>
+                <li><a href="/experience"><i class="fa-solid fa-wand-magic-sparkles"></i> Gestion Expérience</a></li>
+            </ul>
+        </nav>
+    </div>
+    <div style="padding: 20px;">
+        <a href="#" onclick="event.preventDefault(); forceLogout();"
+            style="color:#ef4444; display:flex; gap:10px; align-items:center; text-decoration:none;">
+            <i class="fa-solid fa-power-off"></i> Déconnexion
+        </a>
+    </div>
+</aside>
+
+<script>
+async function forceLogout() {
+    try {
+        sessionStorage.removeItem('osep_user_profile');
+        sessionStorage.removeItem('osepUser');
+        sessionStorage.removeItem('userRole');
+        sessionStorage.removeItem('userTheme');
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/login?logout=success';
+    } catch (e) {
+        window.location.href = '/login';
+    }
+}
+</script>

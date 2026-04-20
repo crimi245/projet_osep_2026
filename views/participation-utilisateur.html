@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="green">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Statistiques - OSEP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <link rel="stylesheet" href="/style-dashboard.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+    <script src="/public/js/profile-dropdown.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <%- include('partials/' + sidebarFile) %>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <button id="openSidebarBtn" onclick="toggleSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div style="flex:1;"></div>
+                <div class="user-area">
+                    <div class="user-profile">
+                        <div>
+                            <h4 id="userDisplay">Chargement...</h4>
+                        </div>
+                        <img id="userAvatar" src="https://ui-avatars.com/api/?name=User&background=0f3d2e&color=fff"
+                            style="width:40px; height:40px; border-radius:50%; margin-left:10px;">
+                    </div>
+                </div>
+            </header>
+
+            <div class="page-header">
+                <div>
+                    <h1>Mes Statistiques</h1>
+                    <p>Vue d'ensemble de vos activités et listes de présence.</p>
+                </div>
+                <!-- BARRE DE FILTRES -->
+                <div class="filters-bar" style="display: flex; gap: 15px; align-items: center;">
+                    <div style="position: relative;">
+                        <select id="filterPeriod" class="form-control"
+                            style="appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 20px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: white; color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.2s ease; outline: none; min-width: 160px;">
+                            <option value="week" selected>Cette Semaine</option>
+                            <option value="month">Ce Mois</option>
+                            <option value="meeting">Par Réunion</option>
+                        </select>
+                        <i class="fa-solid fa-chevron-down"
+                            style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); pointer-events: none; color: #9ca3af; font-size: 0.8rem;"></i>
+                    </div>
+                    <div style="position: relative; display: flex; align-items: center;" id="filterMeetingContainer">
+                        <select id="filterMeeting" class="form-control"
+                            style="appearance: none; -webkit-appearance: none; padding: 12px 40px 12px 20px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); background: white; color: var(--text-main); font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.03); transition: all 0.2s ease; outline: none; min-width: 180px; display: none;">
+                            <option value="">Chargement...</option>
+                        </select>
+                    </div>
+
+                    <button id="applyFilters" class="btn-dark"
+                        style="padding: 12px 24px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; box-shadow: 0 6px 15px rgba(15, 61, 46, 0.2); transition: transform 0.2s, box-shadow 0.2s; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: white; border: none; cursor: pointer;">
+                        <i class="fa-solid fa-filter" style="margin-right: 8px;"></i> Filtrer
+                    </button>
+                    <button id="exportPDF" class="btn-dark"
+                        style="display:none; padding: 12px 24px; border-radius: 12px; font-size: 0.95rem; font-weight: 600; box-shadow: 0 6px 15px rgba(15, 61, 46, 0.2); transition: transform 0.2s, box-shadow 0.2s; background: #064e3b; color: white; border: none; cursor: pointer;">
+                        <i class="fa-solid fa-file-pdf" style="margin-right: 8px;"></i> Export PDF
+                    </button>
+                </div>
+            </div>
+
+
+
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 30px;">
+                <!-- Section du Graphique -->
+                <div class="stat-card" style="height: 500px;">
+                    <canvas id="participationChart"></canvas>
+                </div>
+
+                <!-- Section des Meilleurs Participants -->
+                <div class="stat-card">
+                    <h3 style="margin-bottom: 20px; color: var(--text-main); font-size: 1.1rem;">
+                        <i class="fa-solid fa-trophy" style="color: #fbbf24; margin-right: 8px;"></i>
+                        Top Participants
+                    </h3>
+                    <div id="topParticipantsList" style="display: flex; flex-direction: column; gap: 15px;">
+                        <p style="color: #9ca3af; font-size: 0.9rem;">Aucune donnée disponible.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION DU TABLEAU DES PARTICIPANTS -->
+            <section style="margin-top: 30px;">
+                <div class="stat-card">
+                    <style>
+                        #participants-table th {
+                            text-transform: uppercase;
+                            font-size: 0.75rem;
+                            letter-spacing: 0.05em;
+                            background: rgba(0,0,0,0.02);
+                        }
+                        #participants-table tr:hover {
+                            background-color: rgba(16, 185, 129, 0.02);
+                        }
+                        .signature-img {
+                            transition: transform 0.2s;
+                            cursor: zoom-in;
+                        }
+                        .signature-img:hover {
+                            transform: scale(2.5);
+                            z-index: 10;
+                            position: relative;
+                        }
+                    </style>
+                    <h3 style="margin-bottom: 20px; color: var(--text-main); font-size: 1.1rem;">
+                        <i class="fa-solid fa-users" style="color: var(--primary); margin-right: 8px;"></i>
+                        Détail des Participants
+                    </h3>
+                    <div id="loading-spinner" style="display:none; text-align:center; padding:20px;">
+                        <i class="fa-solid fa-spinner fa-spin" style="font-size:2rem; color:var(--primary);"></i>
+                        <p>Chargement des données...</p>
+                    </div>
+                    <div id="no-data-message" style="display:none; text-align:center; padding:20px; color:#888;">
+                        <p>Aucun participant trouvé pour cette période.</p>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="table" id="participants-table"
+                            style="width:100%; border-collapse:collapse; display:none; margin-top: 10px;">
+                            <thead>
+                                <tr style="background:#f9fafb; border-bottom:2px solid #eee;">
+                                    <th style="padding:12px; text-align:left; color: var(--secondary); font-weight: 700;">Date Inscription</th>
+                                    <th style="padding:12px; text-align:left; color: var(--secondary); font-weight: 700;">Nom Prénom</th>
+                                    <th style="padding:12px; text-align:left; color: var(--secondary); font-weight: 700;">Fonction / Structure</th>
+                                    <th style="padding:12px; text-align:left; color: var(--secondary); font-weight: 700;">Réunion</th>
+                                    <th style="padding:12px; text-align:center; color: var(--secondary); font-weight: 700;">Émargement</th>
+                                </tr>
+                            </thead>
+                            <tbody id="participants-body">
+                                <!-- Lignes injectées par JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script src="/public/js/utils.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', async () => {
+                try {
+                    const userRes = await fetch('/api/user/me');
+                    if (!userRes.ok) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const user = await userRes.json();
+                    const displayName = user.fullname || user.username;
+                    document.getElementById('userDisplay').innerText = displayName;
+
+                    const avatar = document.getElementById('userAvatar');
+                    if (avatar) {
+                        avatar.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0f3d2e&color=fff`;
+                    }
+
+                    loadStats();
+                    initFilters();
+                    fetchParticipants();
+                } catch (e) {
+                    console.error(e);
+                    window.location.href = '/login';
+                }
+            });
+
+            function initFilters() {
+                const periodSelect = document.getElementById('filterPeriod');
+                const meetingSelect = document.getElementById('filterMeeting');
+                const applyBtn = document.getElementById('applyFilters');
+                const exportBtn = document.getElementById('exportPDF');
+
+                periodSelect.addEventListener('change', () => {
+                    if (periodSelect.value === 'meeting') {
+                        meetingSelect.style.display = 'inline-block';
+                        loadMeetingsList();
+                    } else {
+                        meetingSelect.style.display = 'none';
+                        exportBtn.style.display = 'none';
+                    }
+                });
+
+                applyBtn.addEventListener('click', () => {
+                    fetchParticipants();
+                    // On pourrait aussi recharger les stats globales ici si on veut qu'elles soient filtrées
+                });
+
+                exportBtn.addEventListener('click', () => {
+                    const meetingId = meetingSelect.value;
+                    if (!meetingId) {
+                        showToast("Veuillez d'abord sélectionner une réunion.", "warning");
+                        return;
+                    }
+                    window.open('/api/reports/attendance/' + meetingId, '_blank');
+                });
+            }
+
+            async function loadMeetingsList() {
+                try {
+                    const res = await fetch('/api/meetings/list');
+                    const list = await res.json();
+                    const select = document.getElementById('filterMeeting');
+
+                    select.innerHTML = '<option value="">-- Choisir une réunion --</option>';
+                    list.forEach(m => {
+                        const dateStr = new Date(m.start_time).toLocaleDateString('fr-FR');
+                        const opt = document.createElement('option');
+                        opt.value = m.id;
+                        opt.textContent = `${dateStr} - ${m.title}`;
+                        select.appendChild(opt);
+                    });
+                } catch (e) {
+                    console.error("Erreur chargement réunions", e);
+                }
+            }
+
+            async function fetchParticipants() {
+                const filter = document.getElementById('filterPeriod').value;
+                const meetingId = document.getElementById('filterMeeting').value;
+                const exportBtn = document.getElementById('exportPDF');
+
+                const spinner = document.getElementById('loading-spinner');
+                const noData = document.getElementById('no-data-message');
+                const table = document.getElementById('participants-table');
+                const tbody = document.getElementById('participants-body');
+
+                spinner.style.display = 'block';
+                noData.style.display = 'none';
+                table.style.display = 'none';
+                tbody.innerHTML = '';
+
+                if (filter === 'meeting' && meetingId) {
+                    exportBtn.style.display = 'inline-block';
+                } else {
+                    exportBtn.style.display = 'none';
+                }
+
+                try {
+                    let url = `/api/participants?filter=${filter}`;
+                    if (filter === 'meeting' && meetingId) {
+                        url += `&meetingId=${meetingId}`;
+                    }
+
+                    const res = await fetch(url);
+                    const data = await res.json();
+
+                    spinner.style.display = 'none';
+
+                    if (!data || data.length === 0) {
+                        noData.style.display = 'block';
+                    } else {
+                        table.style.display = 'table';
+                        data.forEach(p => {
+                            const tr = document.createElement('tr');
+                            tr.style.borderBottom = '1px solid #f3f4f6';
+
+                            const dateObj = new Date(p.date_inscription);
+                            const dateStr = dateObj.toLocaleDateString('fr-FR') + ' ' + dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                            tr.innerHTML = `
+                                <td style="padding:12px; color:#6b7280; font-size: 0.9rem;">${dateStr}</td>
+                                <td style="padding:12px; font-weight:600; color: var(--text-main); font-size: 0.9rem;">${p.nom || ''} ${p.prenom || ''}</td>
+                                <td style="padding:12px; color:#6b7280; font-size: 0.9rem;">${p.fonction || '-'} / ${p.structure || '-'}</td>
+                                <td style="padding:12px; color:#6b7280; font-size: 0.9rem;">${p.meeting_title || '-'}</td>
+                                <td style="padding:12px; text-align:center;"></td>
+                            `;
+
+                            if (p.signature && p.signature.startsWith('data:image')) {
+                                const img = document.createElement('img');
+                                img.src = p.signature;
+                                img.className = 'signature-img';
+                                img.style.maxHeight = '30px';
+                                img.style.maxWidth = '80px';
+                                img.style.objectFit = 'contain';
+                                tr.children[4].appendChild(img);
+                            } else {
+                                tr.children[4].textContent = 'Non signé';
+                                tr.children[4].style.color = '#9ca3af';
+                                tr.children[4].style.fontSize = '0.8rem';
+                                tr.children[4].style.fontStyle = 'italic';
+                            }
+
+                            tbody.appendChild(tr);
+                        });
+                    }
+                } catch (e) {
+                    console.error(e);
+                    spinner.style.display = 'none';
+                    noData.style.display = 'block';
+                }
+            }
+
+            async function loadStats() {
+                try {
+                    const res = await fetch('/api/stats/my');
+                    if (!res.ok) throw new Error('API Error');
+
+                    const stats = await res.json();
+
+                    // 1. Statistiques de résumé - SUPPRIMÉ à la demande de l'utilisateur
+                    // document.getElementById('totalMeetings').textContent = stats.meetings || 0;
+                    // document.getElementById('totalParticipants').textContent = stats.participants || 0;
+
+                    // 2. Meilleurs Participants
+                    const topList = document.getElementById('topParticipantsList');
+                    if (stats.topParticipants && stats.topParticipants.length > 0) {
+                        topList.innerHTML = stats.topParticipants.map((p, index) => `
+                        <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 24px; height: 24px; background: #e0f2fe; color: #0284c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">
+                                    ${index + 1}
+                                </div>
+                                <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-main);">${p.name}</span>
+                            </div>
+                            <span style="font-weight: 600; color: var(--primary); font-size: 0.9rem;">${p.count} part.</span>
+                        </div>
+                    `).join('');
+                    } else {
+                        topList.innerHTML = '<p style="color: #9ca3af; font-size: 0.9rem;">Aucune donnée disponible.</p>';
+                    }
+
+                    // 3. Graphique (Participation par Réunion)
+                    if (stats.meetingsData && stats.meetingsData.length > 0) {
+                        renderChart(stats.meetingsData);
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    showToast('Erreur de chargement des statistiques', 'error');
+                }
+            }
+
+            function renderChart(data) {
+                const ctx = document.getElementById('participationChart').getContext('2d');
+
+                if (window.myChart) {
+                    window.myChart.destroy();
+                }
+
+                const labels = data.map(d => {
+                    // Tronquer le titre s'il est trop long
+                    return d.title.length > 15 ? d.title.substring(0, 15) + '...' : d.title;
+                });
+                const counts = data.map(d => d.count);
+                const tooltips = data.map(d => `${d.title} (${d.date})`);
+
+                window.myChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Participants',
+                            data: counts,
+                            backgroundColor: (context) => {
+                                const ctx = context.chart.ctx;
+                                const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+                                gradient.addColorStop(0, '#10b981');
+                                gradient.addColorStop(1, '#059669');
+                                return gradient;
+                            },
+                            borderRadius: 8,
+                            barPercentage: 0.6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    title: (tooltipItems) => tooltips[tooltipItems[0].dataIndex]
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Affluence par Réunion (20 dernières)',
+                                align: 'start',
+                                font: { size: 16, weight: '600' },
+                                padding: { bottom: 20 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { borderDash: [5, 5] },
+                                ticks: { precision: 0 }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        </script>
+</body>
+
+</html>

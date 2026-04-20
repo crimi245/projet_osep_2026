@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - OSEP CI</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="stylesheet" href="/public/css/theme.css">
+    <script src="/public/js/theme.js"></script>
+    <script src="/public/js/toast.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+
+    <style>
+        /* Les variables de thème viennent de theme.css */
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            background-image: radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: background-color 0.5s ease;
+            /* Transition douce de couleur */
+        }
+
+        /* BOUTON SWITCH THÈME (Minimaliste Haut Droite) */
+        .theme-switcher {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 100;
+            border: 2px solid var(--primary);
+            transition: transform 0.3s ease, border-color 0.3s;
+        }
+
+        .theme-switcher:hover {
+            transform: scale(1.1) rotate(90deg);
+        }
+
+        .theme-icon {
+            font-size: 1.2rem;
+            color: var(--primary);
+        }
+
+        .login-container {
+            background: white;
+            width: 100%;
+            max-width: 1200px;
+            min-height: 750px;
+            border-radius: 25px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08);
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            animation: fadeInUp 0.8s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* --- PARTIE GAUCHE --- */
+        .left-panel {
+            flex: 1.3;
+            background: var(--bg-panel);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            padding: 40px;
+            transition: background-color 0.5s ease;
+        }
+
+        .bg-shape {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.4);
+            animation: moveShape 10s infinite alternate ease-in-out;
+        }
+
+        .shape-1 {
+            width: 500px;
+            height: 500px;
+            top: -10%;
+            left: -10%;
+        }
+
+        .shape-2 {
+            width: 300px;
+            height: 300px;
+            bottom: 5%;
+            right: -5%;
+        }
+
+        @keyframes moveShape {
+            0% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            100% {
+                transform: translate(20px, 20px) scale(1.1);
+            }
+        }
+
+        .avatar-3d {
+            z-index: 2;
+            max-height: 550px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 15px 35px rgba(0, 0, 0, 0.2));
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* --- LES 4 CARTES FLOTTANTES --- */
+        .floating-card {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid var(--primary);
+            /* S'adapte au thème */
+            z-index: 3;
+            min-width: 170px;
+            cursor: pointer;
+            transition: all 0.3s;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .floating-card:hover {
+            transform: scale(1.1);
+            background: white;
+            z-index: 10;
+        }
+
+        .card-click-anim {
+            animation: cardPop 0.3s forwards;
+        }
+
+        @keyframes cardPop {
+            50% {
+                transform: scale(0.9);
+            }
+        }
+
+        .card-title {
+            font-size: 0.75rem;
+            color: #797979;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .card-val {
+            font-weight: 800;
+            font-size: 1.3rem;
+            color: #000;
+        }
+
+        .badge-trend {
+            font-size: 0.7rem;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+
+        .badge-green {
+            color: #0f5132;
+            background: #d1e7dd;
+        }
+
+        /* Positions des 4 cartes */
+        .card-top-left {
+            top: 80px;
+            left: 40px;
+            animation-delay: 0s;
+        }
+
+        .card-top-right {
+            top: 140px;
+            right: 40px;
+            animation-delay: 2s;
+        }
+
+        .card-bottom-left {
+            bottom: 100px;
+            left: 50px;
+            animation-delay: 1s;
+        }
+
+        .card-bottom-right {
+            bottom: 140px;
+            right: 30px;
+            animation-delay: 3s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        /* --- PARTIE DROITE --- */
+        .right-panel {
+            flex: 1;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: white;
+        }
+
+        .logo-area {
+            margin-bottom: 30px;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            width: fit-content;
+        }
+
+        .logo-box {
+            width: 40px;
+            height: 40px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: background 0.3s, transform 0.6s;
+        }
+
+        .logo-spin .logo-box {
+            transform: rotate(360deg) scale(1.2);
+        }
+
+        h2 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: #000;
+            letter-spacing: -0.5px;
+        }
+
+        p.subtitle {
+            color: #797979;
+            font-size: 0.95rem;
+            margin-bottom: 30px;
+        }
+
+        /* SLIDER GENRE */
+        .gender-toggle-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            background: #f4f4f4;
+            border-radius: 50px;
+            padding: 5px;
+            width: fit-content;
+            position: relative;
+        }
+
+        .gender-option {
+            padding: 8px 20px;
+            cursor: pointer;
+            z-index: 2;
+            font-weight: 600;
+            color: #888;
+            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .gender-option.active {
+            color: white;
+        }
+
+        .gender-slider-bg {
+            position: absolute;
+            left: 5px;
+            top: 5px;
+            bottom: 5px;
+            width: calc(50% - 5px);
+            background: var(--primary);
+            border-radius: 40px;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55), background 0.3s;
+            z-index: 1;
+        }
+
+        .gender-toggle-wrapper.female .gender-slider-bg {
+            transform: translateX(100%);
+        }
+
+        /* FORMULAIRE */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            color: #000;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #f0f0f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            color: #333;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.05);
+            outline: none;
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: #000;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .shake-animation {
+            animation: shake 0.5s cubic-bezier(.36, .07, .19, .97) both;
+        }
+
+        @keyframes shake {
+
+            10%,
+            90% {
+                transform: translateX(-4px);
+            }
+
+            20%,
+            80% {
+                transform: translateX(4px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="theme-switcher" onclick="toggleTheme()" title="Changer de couleur">
+        <i class="fa-solid fa-palette theme-icon"></i>
+    </div>
+
+    <div class="login-container" id="loginBox">
+
+        <div class="left-panel">
+            <div class="bg-shape shape-1"></div>
+            <div class="bg-shape shape-2"></div>
+
+            <img id="avatarImg" src="orangehomme.png" alt="Avatar OSEP" class="avatar-3d"
+                onerror="this.style.display='none'">
+
+            <div class="floating-card card-top-left" onclick="triggerCardAnim(this)">
+                <div class="card-title">Réunions Actives</div>
+                <svg width="120" height="40" viewBox="0 0 120 40">
+                    <path d="M0,30 Q20,10 40,25 T80,5 T120,20" fill="none" stroke="var(--primary)" stroke-width="3" />
+                </svg>
+                <div class="card-val-row"><span class="card-val">624k</span><span
+                        class="badge-trend badge-green">+8%</span></div>
+            </div>
+
+            <div class="floating-card card-top-right" onclick="triggerCardAnim(this)">
+                <div class="card-title">Participants</div>
+                <div style="display:flex; gap:4px; align-items:end; height:40px; margin-bottom:5px;">
+                    <div style="width:6px; height:40%; background:var(--primary); border-radius:2px;"></div>
+                    <div style="width:6px; height:70%; background:var(--primary); border-radius:2px;"></div>
+                    <div style="width:6px; height:50%; background:var(--primary); border-radius:2px;"></div>
+                    <div style="width:6px; height:90%; background:var(--primary); border-radius:2px;"></div>
+                </div>
+                <div class="card-val-row"><span class="card-val">1240</span><span
+                        class="badge-trend badge-green">Top</span></div>
+            </div>
+
+            <div class="floating-card card-bottom-left" onclick="triggerCardAnim(this)">
+                <div class="card-title">Utilisateurs</div>
+                <div class="card-val-row" style="margin-top: 10px;">
+                    <span class="card-val">45</span>
+                    <span style="font-size:1.2rem;">👨🏿‍💻</span>
+                </div>
+            </div>
+
+            <div class="floating-card card-bottom-right" onclick="triggerCardAnim(this)">
+                <div class="card-title">Performance OSEP</div>
+                <svg width="140" height="50" viewBox="0 0 140 50" style="opacity:0.8;">
+                    <path d="M0,25 C20,5 40,45 60,25 S100,5 140,25" fill="none" stroke="var(--primary)"
+                        stroke-width="2" />
+                    <path d="M0,35 C20,15 40,55 60,35 S100,15 140,35" fill="none" stroke="#000" stroke-width="2" />
+                </svg>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="logo-area" id="logoArea" onclick="triggerLogoAnim()">
+                <div class="logo-box">O</div> OSEP TABLEAU DE BORD
+            </div>
+
+            <h2>Bienvenue</h2>
+            <p class="subtitle">Connectez-vous à la plateforme de gestion.</p>
+
+            <!-- SLIDER GENRE (Suppression theme toggle wrapper car redondant avec le global) -->
+            <div class="gender-toggle-wrapper" id="genderToggle">
+                <div class="gender-slider-bg"></div>
+                <div class="gender-option active" onclick="setGender('homme')">
+                    <i class="fa-solid fa-person"></i> Homme
+                </div>
+                <div class="gender-option" onclick="setGender('femme')">
+                    <i class="fa-solid fa-person-dress"></i> Femme
+                </div>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Login</label>
+                    <input type="text" id="username" class="form-control" placeholder="Entrez votre ID" value="">
+                </div>
+
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <div style="position:relative;">
+                        <input type="password" id="password" class="form-control"
+                            placeholder="Entrez votre mot de passe" value="" style="padding-right:40px;">
+                        <i class="fa-solid fa-eye" id="togglePasswordBtn"
+                            style="position:absolute; right:12px; top:50%; transform:translateY(-50%); cursor:pointer; color:#888; z-index:10;"
+                            onclick="togglePasswordVisibility()"></i>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary">SE CONNECTER</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // État global - DÉFAUT = GREEN
+        let currentGender = 'homme';
+        let currentTheme = localStorage.getItem('osep-theme') || 'green';
+
+        // Initialisation - Écouteur de changement de thème
+        window.addEventListener('themeChanged', (e) => {
+            currentTheme = e.detail;
+            updateAvatar();
+        });
+
+        window.addEventListener('load', () => {
+            // Le thème est déjà appliqué par theme.js dans le head
+            currentTheme = localStorage.getItem('osep-theme') || 'green';
+            updateAvatar();
+        });
+
+        // 3. Gestion du Genre (Homme <-> Femme)
+        function setGender(gender) {
+            currentGender = gender;
+            const wrapper = document.getElementById('genderToggle');
+            const options = wrapper.querySelectorAll('.gender-option');
+
+            if (gender === 'femme') {
+                wrapper.classList.add('female');
+                options[0].classList.remove('active');
+                options[1].classList.add('active');
+            } else {
+                wrapper.classList.remove('female');
+                options[0].classList.add('active');
+                options[1].classList.remove('active');
+            }
+            updateAvatar();
+        }
+
+        // 4. Mise à jour de l'image (Thème + Genre)
+        function updateAvatar() {
+            // Mapping : le thème est "green" dans le code, mais les fichiers sont nommés "vert..."
+            let fileTheme = currentTheme;
+            if (currentTheme === 'green') {
+                fileTheme = 'vert';
+            }
+
+            // Construit le nom : "orangehomme.png", "verthomme.png", etc.
+            const filename = `${fileTheme}${currentGender}.png`;
+            const img = document.getElementById('avatarImg');
+
+            // Petit effet de fondu pour la transition
+            img.style.opacity = '0';
+            setTimeout(() => {
+                img.src = filename;
+                img.style.opacity = '1';
+            }, 200);
+        }
+
+        // 5. Connexion (Reste inchangé mais propre)
+        // Remplace toute la fonction handleLogin(e) par ceci :
+        // À remplacer dans le script de login.html
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            const loginBox = document.getElementById('loginBox');
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            btn.innerText = '...';
+            btn.disabled = true;
+
+            try {
+                // Initialiser FingerprintJS et récupérer l'empreinte (Sécurisé contre les bloqueurs)
+                let fpData = null;
+                try {
+                    if (typeof FingerprintJS !== 'undefined') {
+                        const fp = await FingerprintJS.load();
+                        fpData = await fp.get();
+                    }
+                } catch (fpErr) {
+                    console.warn("L'empreinte du navigateur a été bloquée ou indisponible :", fpErr);
+                }
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        theme: currentTheme,
+                        browser_fingerprint: fpData
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // STOCKER LES DONNÉES DE SESSION
+                    // Standardiser sur 'osep_user_profile' pour correspondre à profile-dropdown.js
+                    sessionStorage.setItem('osep_user_profile', JSON.stringify(data.user));
+
+                    // Effacer les clés obsolètes/redondantes pour éviter la confusion
+                    sessionStorage.removeItem('osepUser');
+                    sessionStorage.removeItem('userRole');
+                    sessionStorage.removeItem('userTheme');
+
+                    // IMPORTANT : Synchroniser le thème avec LocalStorage pour la vitesse de theme.js
+                    // Synchronisation du thème serveur vers le stockage local pour theme.js
+                    if (data.user.theme_color) {
+                        let serverTheme = data.user.theme_color;
+                        // Correction compatibilité 'vert' -> 'green'
+                        if (serverTheme === 'vert') serverTheme = 'green';
+                        localStorage.setItem('osep-theme', serverTheme);
+                    }
+
+                    // Redirection en fonction du rôle
+                    if (data.user.role === 'super_admin') {
+                        // Le super_admin est redirigé vers la gestion des utilisateurs
+                        window.location.href = '/admin';
+                    } else if (data.user.role === 'admin') {
+                        // L'admin opérationnel est redirigé vers le tableau de bord
+                        window.location.href = '/dashboard';
+                    } else if (data.user.role === 'staff') {
+                        // Le staff (CFPMG) est redirigé vers sa page dédiée
+                        window.location.href = '/gestion-staff';
+                    } else {
+                        // Les utilisateurs standards (non traités spécifiquement ici, mais prévus)
+                        window.location.href = '/user'; // Ou /dashboard si unifié
+                    }
+                } else {
+                    throw new Error(data.error || 'Erreur de connexion');
+                }
+            } catch (err) {
+                // Gestion des erreurs
+                loginBox.classList.add('shake-animation');
+                document.getElementById('password').style.borderColor = '#ff3b30';
+                btn.innerText = originalText;
+                btn.disabled = false;
+
+                console.error(err);
+
+                setTimeout(() => {
+                    loginBox.classList.remove('shake-animation');
+                    document.getElementById('password').style.borderColor = '#f0f0f0';
+                }, 500);
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const icon = document.getElementById('togglePasswordBtn');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // --- GESTION DES NOTIFICATIONS (TOASTS) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Notification de déconnexion réussie
+            if (params.has('logout')) {
+                toast.success("Vous avez été déconnecté avec succès.");
+                // Nettoyer l'URL
+                window.history.replaceState({}, document.title, "/login");
+            }
+            
+            // Notification d'erreur ou déconnexion forcée
+            if (params.has('error')) {
+                const error = params.get('error');
+                if (error === 'forced_logout') {
+                    toast.warning("Votre session a été interrompue par un administrateur.");
+                } else if (error === 'session_expired') {
+                    toast.info("Votre session a expiré. Veuillez vous reconnecter.");
+                }
+                // Nettoyer l'URL
+                window.history.replaceState({}, document.title, "/login");
+            }
+        });
+    </script>
+</body>
+
+</html>
